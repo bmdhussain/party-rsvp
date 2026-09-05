@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="balloons">🎊</div>
+    <div class="hero">
+      <h1>Host Dashboard</h1>
+      <div class="meta">Guest headcounts are only visible here.</div>
+    </div>
+
+    <div class="card host-login" id="login-card">
+      <h2>Host Login</h2>
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Enter host password" />
+      <div class="error-msg" id="login-error"></div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="login-btn">Log in</button>
+      </div>
+    </div>
+
+    <div id="dashboard" style="display:none;">
+      <div class="card">
+        <h2>🎈 Headcount</h2>
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="num" id="stat-attending">0</div>
+            <div class="label">RSVPs Yes</div>
+          </div>
+          <div class="stat-tile">
+            <div class="num" id="stat-adults">0</div>
+            <div class="label">Adults</div>
+          </div>
+          <div class="stat-tile">
+            <div class="num" id="stat-kids">0</div>
+            <div class="label">Kids</div>
+          </div>
+          <div class="stat-tile">
+            <div class="num" id="stat-declined">0</div>
+            <div class="label">Declined</div>
+          </div>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-ghost btn-small" id="refresh-btn">🔄 Refresh</button>
+          <button class="btn btn-ghost btn-small" id="email-attending-btn">✉️ Email attending guests</button>
+          <button class="btn btn-ghost btn-small" id="email-all-btn">✉️ Email everyone</button>
+          <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Guest List</h2>
+        <div class="table-scroll">
+          <table class="guest-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Adults</th>
+                <th>Kids</th>
+                <th>Message</th>
+                <th>Submitted</th>
+              </tr>
+            </thead>
+            <tbody id="guest-table-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet.</div>
+      </div>
+    </div>
+
+    <div class="footer-link">
+      <a href="index.html">← Back to invite page</a>
+    </div>
+  </div>
+
+  <script src="host.js"></script>
+</body>
+</html>

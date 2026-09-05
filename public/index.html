@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>You're Invited!</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="balloons">🎈 🎉 🎈</div>
+    <div class="hero">
+      <h1 id="event-name">Loading party details…</h1>
+      <div class="meta" id="event-date"></div>
+      <div class="meta" id="event-location"></div>
+      <div class="desc" id="event-desc"></div>
+    </div>
+
+    <div class="share-row">
+      <button class="btn btn-ghost" id="copy-link-btn">🔗 Copy invite link to share</button>
+    </div>
+
+    <div class="card" id="rsvp-card">
+      <h2>RSVP</h2>
+      <form id="rsvp-form">
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" required maxlength="100" placeholder="Jamie Rivera" />
+
+        <label for="email">Email (for party updates)</label>
+        <input type="email" id="email" name="email" required maxlength="200" placeholder="you@example.com" />
+        <div class="hint">No phone number needed — we'll only email you updates about the party.</div>
+
+        <label>Will you be there?</label>
+        <div class="attending-toggle">
+          <label style="margin:0;">
+            <input type="radio" name="attending" value="yes" checked />
+            <div class="opt">🎉 Yes, count me in!</div>
+          </label>
+          <label style="margin:0;">
+            <input type="radio" name="attending" value="no" />
+            <div class="opt">😢 Can't make it</div>
+          </label>
+        </div>
+
+        <div id="guest-count-fields">
+          <div class="guest-count-row">
+            <div>
+              <label for="adults">Adults</label>
+              <input type="number" id="adults" name="adults" min="0" value="1" />
+            </div>
+            <div>
+              <label for="kids">Kids</label>
+              <input type="number" id="kids" name="kids" min="0" value="0" />
+            </div>
+          </div>
+          <div class="hint">Only the host can see headcount numbers — everyone else just sees your comment below.</div>
+        </div>
+
+        <label for="comment">Leave a message (visible to everyone)</label>
+        <textarea id="comment" name="comment" maxlength="500" placeholder="Can't wait! Should I bring anything?"></textarea>
+
+        <div class="error-msg" id="form-error"></div>
+
+        <div style="margin-top:20px;">
+          <button type="submit" class="btn btn-primary" id="submit-btn">Send RSVP</button>
+        </div>
+      </form>
+
+      <div class="success-box" id="success-box" style="display:none;">
+        <div class="big-emoji">🥳</div>
+        <p>Thanks! Your RSVP is in.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>💬 Party Wall</h2>
+      <div id="comments-list">
+        <div class="empty-note">Loading comments…</div>
+      </div>
+    </div>
+
+    <div class="footer-link">
+      <a href="host.html">Are you the host? Log in →</a>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

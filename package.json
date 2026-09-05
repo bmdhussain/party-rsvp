@@ -1,22 +1,15 @@
 {
-  "name": "stores",
+  "name": "party-rsvp",
   "version": "1.0.0",
-  "main": "index.ts",
-  "dependencies": {
-    "expo": "~57.0.11",
-    "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
-    "react-native": "0.86.2"
-  },
-  "devDependencies": {
-    "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
-  },
+  "private": true,
+  "description": "A festive, no-frills event RSVP website",
+  "main": "server.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "node server.js"
   },
-  "private": true
+  "dependencies": {
+    "@replit/database": "^3.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
 }
