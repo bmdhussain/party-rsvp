@@ -5,6 +5,10 @@ entrypoint = "server.js"
 [nix]
 channel = "stable-24_05"
 
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm", "start"]
+
 [[ports]]
 localPort = 3000
 externalPort = 80
