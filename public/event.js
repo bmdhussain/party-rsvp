@@ -1,30 +1,43 @@
 const SLUG = window.location.pathname.split('/').filter(Boolean).pop();
 
+function formatEventDate(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 async function loadEvent() {
   try {
     const res = await fetch(`/api/events/${SLUG}/public`);
     if (!res.ok) throw new Error('not found');
     const event = await res.json();
     document.title = `RSVP: ${event.name}`;
-    document.getElementById('event-name').textContent = event.name;
-    document.getElementById('event-desc').textContent = event.description || '';
 
-    if (event.event_date) {
-      const date = new Date(event.event_date);
-      const dateText = Number.isNaN(date.getTime())
-        ? ''
-        : date.toLocaleString(undefined, {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-          });
+    const dateText = formatEventDate(event.event_date);
+
+    if (event.imageUrl) {
+      document.getElementById('plain-hero-wrap').style.display = 'none';
+      document.getElementById('banner-wrap').style.display = 'block';
+      document.getElementById('banner-img').src = event.imageUrl;
+      document.getElementById('banner-name').textContent = event.name;
+      document.getElementById('banner-date').textContent = dateText ? `📅 ${dateText}` : '';
+      document.getElementById('banner-location').textContent = event.location ? `📍 ${event.location}` : '';
+      document.getElementById('banner-desc').textContent = event.description || '';
+    } else {
+      document.getElementById('event-name').textContent = event.name;
+      document.getElementById('event-desc').textContent = event.description || '';
       document.getElementById('event-date').textContent = dateText ? `📅 ${dateText}` : '';
-    }
-    if (event.location) {
-      document.getElementById('event-location').textContent = `📍 ${event.location}`;
+      if (event.location) {
+        document.getElementById('event-location').textContent = `📍 ${event.location}`;
+      }
     }
   } catch (err) {
     document.getElementById('event-name').textContent = 'Event not found';

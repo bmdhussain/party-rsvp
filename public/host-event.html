@@ -34,6 +34,50 @@
       </div>
 
       <div class="card">
+        <h2>🖼️ Invitation Image</h2>
+        <div id="image-preview-wrap">
+          <img id="image-preview" style="display:none; max-width:100%; border-radius:14px; margin-bottom:14px;" />
+          <div class="empty-note" id="image-empty">No image set — pick a template or upload your own below.</div>
+        </div>
+
+        <div class="hint" style="margin-bottom:8px;">Choose a template</div>
+        <div class="template-grid" id="template-grid">
+          <div class="empty-note">Loading templates…</div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <label for="image-upload">Or upload your own (JPEG/PNG/WebP, up to 4MB)</label>
+          <input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" />
+        </div>
+        <div class="error-msg" id="image-error"></div>
+      </div>
+
+      <div class="card">
+        <h2>✏️ Event Details</h2>
+        <form id="edit-event-form">
+          <label for="edit-name">Event name</label>
+          <input type="text" id="edit-name" required maxlength="150" />
+
+          <label for="edit-date">Date &amp; time</label>
+          <input type="text" id="edit-date" placeholder="2026-10-10T18:00" />
+          <div class="hint">Format: YYYY-MM-DDTHH:MM (24-hour)</div>
+
+          <label for="edit-location">Location</label>
+          <input type="text" id="edit-location" maxlength="300" />
+
+          <label for="edit-description">Description</label>
+          <textarea id="edit-description" maxlength="1000"></textarea>
+
+          <div class="error-msg" id="edit-error"></div>
+
+          <div class="action-row">
+            <button type="submit" class="btn btn-primary btn-small">Save changes</button>
+            <button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">✉️ Notify guests of this update</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
         <h2>🎈 Headcount</h2>
         <div class="stats-grid">
           <div class="stat-tile">

@@ -5,9 +5,22 @@ const express = require('express');
 const session = require('express-session');
 const pgSessionFactory = require('connect-pg-simple');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
 
 const { pool, init } = require('./lib/db');
 const { passport, providers } = require('./lib/auth');
+const { TEMPLATES, findTemplate } = require('./lib/templates');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      return cb(new Error('Only JPEG, PNG, or WebP images are allowed.'));
+    }
+    cb(null, true);
+  },
+});
 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
@@ -87,6 +100,10 @@ function makeShareUrl(req, slug) {
   return `${req.protocol}://${req.get('host')}/e/${slug}`;
 }
 
+function makeImageUrl(req, slug, hasImage) {
+  return hasImage ? `${req.protocol}://${req.get('host')}/api/events/${slug}/image` : null;
+}
+
 // --- Auth ---
 
 app.get('/api/auth/providers', (req, res) => res.json(providers));
@@ -124,12 +141,24 @@ if (providers.facebook) {
 
 // --- Events (host, authenticated) ---
 
+app.get('/api/templates', (req, res) => {
+  res.json(TEMPLATES.map((t) => ({ id: t.id, label: t.label, previewUrl: `/templates/${t.file}` })));
+});
+
 app.get('/api/events', requireAuth, async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, slug, name, event_date, location, created_at FROM events WHERE owner_id = $1 ORDER BY created_at DESC',
+    `SELECT id, slug, name, event_date, location, created_at,
+            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
+     FROM events WHERE owner_id = $1 ORDER BY created_at DESC`,
     [req.user.id]
   );
-  res.json(rows.map((r) => ({ ...r, shareUrl: makeShareUrl(req, r.slug) })));
+  res.json(
+    rows.map((r) => ({
+      ...r,
+      shareUrl: makeShareUrl(req, r.slug),
+      imageUrl: makeImageUrl(req, r.slug, r.has_image),
+    }))
+  );
 });
 
 app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
@@ -159,6 +188,61 @@ app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
   res.json({ id, slug, shareUrl: makeShareUrl(req, slug) });
 });
 
+app.patch('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, res) => {
+  const { name, date, location, description } = req.body || {};
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'Event name is required.' });
+  }
+  const eventDate = date ? new Date(date) : null;
+
+  const { rows } = await pool.query(
+    `UPDATE events SET name = $1, event_date = $2, location = $3, description = $4
+     WHERE id = $5 AND owner_id = $6
+     RETURNING id, slug`,
+    [
+      name.trim().slice(0, 150),
+      eventDate && !Number.isNaN(eventDate.getTime()) ? eventDate : null,
+      (location || '').trim().slice(0, 300),
+      (description || '').trim().slice(0, 1000),
+      req.params.eventId,
+      req.user.id,
+    ]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
+  res.json({ ok: true, shareUrl: makeShareUrl(req, rows[0].slug) });
+});
+
+app.post(
+  '/api/events/:eventId/image',
+  requireAuth,
+  verifySameOrigin,
+  upload.single('image'),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No image uploaded.' });
+
+    const { rowCount } = await pool.query(
+      `UPDATE events SET image_data = $1, image_mime = $2, template_id = NULL
+       WHERE id = $3 AND owner_id = $4`,
+      [req.file.buffer, req.file.mimetype, req.params.eventId, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
+    res.json({ ok: true });
+  }
+);
+
+app.post('/api/events/:eventId/template', requireAuth, verifySameOrigin, async (req, res) => {
+  const template = findTemplate(req.body?.templateId);
+  if (!template) return res.status(400).json({ error: 'Unknown template.' });
+
+  const { rowCount } = await pool.query(
+    `UPDATE events SET template_id = $1, image_data = NULL, image_mime = NULL
+     WHERE id = $2 AND owner_id = $3`,
+    [template.id, req.params.eventId, req.user.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
+  res.json({ ok: true });
+});
+
 app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, res) => {
   const { rowCount } = await pool.query('DELETE FROM events WHERE id = $1 AND owner_id = $2', [
     req.params.eventId,
@@ -170,7 +254,9 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
-    'SELECT * FROM events WHERE id = $1 AND owner_id = $2',
+    `SELECT id, slug, owner_id, name, event_date, location, description, created_at,
+            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
+     FROM events WHERE id = $1 AND owner_id = $2`,
     [req.params.eventId, req.user.id]
   );
   if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
@@ -195,7 +281,11 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   );
 
   res.json({
-    event: { ...eventRows[0], shareUrl: makeShareUrl(req, eventRows[0].slug) },
+    event: {
+      ...eventRows[0],
+      shareUrl: makeShareUrl(req, eventRows[0].slug),
+      imageUrl: makeImageUrl(req, eventRows[0].slug, eventRows[0].has_image),
+    },
     rsvps,
     totals,
   });
@@ -205,11 +295,34 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
 
 app.get('/api/events/:slug/public', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT name, event_date, location, description FROM events WHERE slug = $1',
+    `SELECT name, event_date, location, description,
+            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
+     FROM events WHERE slug = $1`,
     [req.params.slug]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
-  res.json(rows[0]);
+  const { has_image, ...event } = rows[0];
+  res.json({ ...event, imageUrl: makeImageUrl(req, req.params.slug, has_image) });
+});
+
+app.get('/api/events/:slug/image', async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT image_data, image_mime, template_id FROM events WHERE slug = $1',
+    [req.params.slug]
+  );
+  const event = rows[0];
+  if (!event) return res.status(404).end();
+
+  if (event.image_data) {
+    res.set('Content-Type', event.image_mime || 'application/octet-stream');
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.send(event.image_data);
+  }
+  if (event.template_id) {
+    const template = findTemplate(event.template_id);
+    if (template) return res.redirect(`/templates/${template.file}`);
+  }
+  res.status(404).end();
 });
 
 app.get('/api/events/:slug/comments', async (req, res) => {
@@ -283,6 +396,14 @@ app.get('/host/:eventId', requirePageAuth, (req, res) =>
 app.get('/e/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'event.html')));
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Catches multer errors (bad file type, file too large) from anywhere above.
+app.use((err, req, res, next) => {
+  if (err) {
+    return res.status(400).json({ error: err.message || 'Request failed.' });
+  }
+  next();
+});
 
 init()
   .then(() => {

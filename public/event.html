@@ -9,12 +9,27 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="balloons">🎈 🎉 🎈</div>
-    <div class="hero">
-      <h1 id="event-name">Loading party details…</h1>
-      <div class="meta" id="event-date"></div>
-      <div class="meta" id="event-location"></div>
-      <div class="desc" id="event-desc"></div>
+    <div id="banner-wrap" style="display:none;">
+      <div class="invite-banner">
+        <img id="banner-img" alt="" />
+        <div class="scrim"></div>
+        <div class="banner-overlay">
+          <h1 id="banner-name"></h1>
+          <div class="meta" id="banner-date"></div>
+          <div class="meta" id="banner-location"></div>
+        </div>
+      </div>
+      <p class="desc" id="banner-desc" style="text-align:center; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.25);"></p>
+    </div>
+
+    <div id="plain-hero-wrap">
+      <div class="balloons">🎈 🎉 🎈</div>
+      <div class="hero">
+        <h1 id="event-name">Loading party details…</h1>
+        <div class="meta" id="event-date"></div>
+        <div class="meta" id="event-location"></div>
+        <div class="desc" id="event-desc"></div>
+      </div>
     </div>
 
     <div class="share-row">
