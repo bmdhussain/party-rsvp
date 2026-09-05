@@ -1,26 +1,34 @@
+const SLUG = window.location.pathname.split('/').filter(Boolean).pop();
+
 async function loadEvent() {
   try {
-    const res = await fetch('/api/event');
+    const res = await fetch(`/api/events/${SLUG}/public`);
+    if (!res.ok) throw new Error('not found');
     const event = await res.json();
     document.title = `RSVP: ${event.name}`;
     document.getElementById('event-name').textContent = event.name;
-    document.getElementById('event-desc').textContent = event.description;
+    document.getElementById('event-desc').textContent = event.description || '';
 
-    const date = new Date(event.date);
-    const dateText = Number.isNaN(date.getTime())
-      ? event.date
-      : date.toLocaleString(undefined, {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-        });
-    document.getElementById('event-date').textContent = `📅 ${dateText}`;
-    document.getElementById('event-location').textContent = `📍 ${event.location}`;
+    if (event.event_date) {
+      const date = new Date(event.event_date);
+      const dateText = Number.isNaN(date.getTime())
+        ? ''
+        : date.toLocaleString(undefined, {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+      document.getElementById('event-date').textContent = dateText ? `📅 ${dateText}` : '';
+    }
+    if (event.location) {
+      document.getElementById('event-location').textContent = `📍 ${event.location}`;
+    }
   } catch (err) {
-    document.getElementById('event-name').textContent = 'Party details unavailable';
+    document.getElementById('event-name').textContent = 'Event not found';
+    document.getElementById('rsvp-card').style.display = 'none';
   }
 }
 
@@ -44,7 +52,7 @@ function escapeHtml(str) {
 async function loadComments() {
   const list = document.getElementById('comments-list');
   try {
-    const res = await fetch('/api/comments');
+    const res = await fetch(`/api/events/${SLUG}/comments`);
     const comments = await res.json();
     if (!comments.length) {
       list.innerHTML = '<div class="empty-note">No messages yet — be the first to say hi!</div>';
@@ -55,9 +63,9 @@ async function loadComments() {
         (c) => `
         <div class="comment-item">
           <span class="who">${escapeHtml(c.name)}</span>
-          <span class="badge ${c.attending ? 'yes' : 'no'}">${c.attending ? "🎉 Attending" : "Can't make it"}</span>
+          <span class="badge ${c.attending ? 'yes' : 'no'}">${c.attending ? '🎉 Attending' : "Can't make it"}</span>
           <div class="text">${escapeHtml(c.comment)}</div>
-          <div class="when">${timeAgo(c.createdAt)}</div>
+          <div class="when">${timeAgo(c.created_at)}</div>
         </div>`
       )
       .join('');
@@ -103,7 +111,7 @@ function setupForm() {
     };
 
     try {
-      const res = await fetch('/api/rsvp', {
+      const res = await fetch(`/api/events/${SLUG}/rsvp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

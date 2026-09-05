@@ -1,15 +1,21 @@
 {
   "name": "party-rsvp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "A festive, no-frills event RSVP website",
+  "description": "A multi-tenant event RSVP platform: hosts sign in with Google or Facebook to create events and share a link",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "@replit/database": "^3.0.1",
+    "connect-pg-simple": "^9.0.1",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "express-session": "^1.18.0",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.12.0"
   }
 }

@@ -3,28 +3,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Host Dashboard</title>
+  <title>Event Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="wrap">
+    <div class="top-bar">
+      <a href="/dashboard" class="btn btn-ghost btn-small">← All events</a>
+      <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
+    </div>
+
     <div class="balloons">🎊</div>
     <div class="hero">
-      <h1>Host Dashboard</h1>
+      <h1 id="event-title">Loading…</h1>
       <div class="meta">Guest headcounts are only visible here.</div>
     </div>
 
-    <div class="card host-login" id="login-card">
-      <h2>Host Login</h2>
-      <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Enter host password" />
-      <div class="error-msg" id="login-error"></div>
-      <div style="margin-top:16px;">
-        <button class="btn btn-primary" id="login-btn">Log in</button>
-      </div>
+    <div id="not-found" class="card" style="display:none;">
+      <p>This event doesn't exist, or isn't yours.</p>
+      <a class="btn btn-primary" href="/dashboard">Back to my events</a>
     </div>
 
     <div id="dashboard" style="display:none;">
+      <div class="card">
+        <h2>🔗 Share this event</h2>
+        <div class="link-row">
+          <input type="text" id="share-link" readonly onclick="this.select()" />
+          <button class="btn btn-ghost btn-small" id="copy-link-btn">Copy</button>
+        </div>
+      </div>
+
       <div class="card">
         <h2>🎈 Headcount</h2>
         <div class="stats-grid">
@@ -49,7 +57,6 @@
           <button class="btn btn-ghost btn-small" id="refresh-btn">🔄 Refresh</button>
           <button class="btn btn-ghost btn-small" id="email-attending-btn">✉️ Email attending guests</button>
           <button class="btn btn-ghost btn-small" id="email-all-btn">✉️ Email everyone</button>
-          <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
         </div>
       </div>
 
@@ -74,12 +81,8 @@
         <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet.</div>
       </div>
     </div>
-
-    <div class="footer-link">
-      <a href="index.html">← Back to invite page</a>
-    </div>
   </div>
 
-  <script src="host.js"></script>
+  <script src="host-event.js"></script>
 </body>
 </html>

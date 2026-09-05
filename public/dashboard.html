@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Events</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar">
+      <div class="user" id="user-info"></div>
+      <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
+    </div>
+
+    <div class="hero">
+      <h1>My Events</h1>
+    </div>
+
+    <div class="card">
+      <div id="events-list">
+        <div class="empty-note">Loading your events…</div>
+      </div>
+
+      <button class="btn btn-primary" id="new-event-btn" style="margin-top:16px;">+ Create Event</button>
+
+      <form id="new-event-form" class="new-event-form">
+        <label for="name">Event name</label>
+        <input type="text" id="name" required maxlength="150" placeholder="Alex's Birthday Bash" />
+
+        <label for="date">Date &amp; time</label>
+        <input type="text" id="date" placeholder="2026-10-10T18:00" />
+        <div class="hint">Format: YYYY-MM-DDTHH:MM (24-hour)</div>
+
+        <label for="location">Location</label>
+        <input type="text" id="location" maxlength="300" placeholder="123 Party Lane, Funtown" />
+
+        <label for="description">Description</label>
+        <textarea id="description" maxlength="1000" placeholder="Come celebrate with cake, music, and good vibes!"></textarea>
+
+        <div class="error-msg" id="create-error"></div>
+
+        <div style="margin-top:16px; display:flex; gap:10px;">
+          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="button" class="btn btn-ghost" id="cancel-new-event">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

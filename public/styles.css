@@ -368,3 +368,95 @@ textarea {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Login / landing */
+
+.provider-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+
+.provider-btn.google {
+  background: #fff;
+  color: #3c4043;
+  border: 2px solid #eee0f5;
+}
+
+.provider-btn.facebook {
+  background: #1877f2;
+  color: #fff;
+}
+
+.provider-btn .icon {
+  font-size: 18px;
+}
+
+.tagline {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 16px;
+  margin: -8px 0 24px;
+}
+
+/* Dashboard */
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.top-bar .user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.top-bar img.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+}
+
+.event-card {
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: #fffaf6;
+}
+
+.event-card h3 {
+  margin: 0 0 6px;
+  font-family: 'Baloo 2', sans-serif;
+}
+
+.event-card .link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.event-card .link-row input {
+  flex: 1;
+  min-width: 160px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.new-event-form {
+  display: none;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1e6f7;
+}
