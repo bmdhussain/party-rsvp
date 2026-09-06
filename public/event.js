@@ -28,15 +28,15 @@ async function loadEvent() {
       document.getElementById('banner-wrap').style.display = 'block';
       document.getElementById('banner-img').src = event.imageUrl;
       document.getElementById('banner-name').textContent = event.name;
-      document.getElementById('banner-date').textContent = dateText ? `📅 ${dateText}` : '';
-      document.getElementById('banner-location').textContent = event.location ? `📍 ${event.location}` : '';
+      document.getElementById('banner-date').textContent = dateText || '';
+      document.getElementById('banner-location').textContent = event.location || '';
       document.getElementById('banner-desc').textContent = event.description || '';
     } else {
       document.getElementById('event-name').textContent = event.name;
       document.getElementById('event-desc').textContent = event.description || '';
-      document.getElementById('event-date').textContent = dateText ? `📅 ${dateText}` : '';
+      document.getElementById('event-date').textContent = dateText;
       if (event.location) {
-        document.getElementById('event-location').textContent = `📍 ${event.location}`;
+        document.getElementById('event-location').textContent = event.location;
       }
     }
 
@@ -80,7 +80,7 @@ async function loadComments() {
         (c) => `
         <div class="comment-item">
           <span class="who">${escapeHtml(c.name)}</span>
-          <span class="badge ${c.attending ? 'yes' : 'no'}">${c.attending ? '🎉 Attending' : "Can't make it"}</span>
+          <span class="badge ${c.attending ? 'yes' : 'no'}">${c.attending ? 'Attending' : "Can't make it"}</span>
           <div class="text">${escapeHtml(c.comment)}</div>
           <div class="when">${timeAgo(c.created_at)}</div>
         </div>`

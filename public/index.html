@@ -7,20 +7,25 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="balloons">🎈 🎉 🎈</div>
+  <div class="wrap narrow">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
+      <nav class="header-nav"><a class="btn btn-ghost btn-small" href="/">Home</a></nav>
+    </header>
     <div class="hero">
-      <h1>Party RSVP</h1>
+      <div class="eyebrow" style="color:#ffe0b1;">Make room for good news</div>
+      <h1>Gather beautifully.</h1>
     </div>
     <p class="tagline">Create a party in seconds. Share one link. Watch the RSVPs roll in.</p>
 
-    <div class="card" style="max-width:380px; margin:0 auto;" id="login-card">
-      <h2 style="text-align:center;">Host an event</h2>
+    <div class="card" style="max-width:430px; margin:0 auto;" id="login-card">
+      <div class="eyebrow">For the host</div><h2>Open the door to your people.</h2>
       <div id="provider-buttons">
         <div class="empty-note">Loading sign-in options…</div>
       </div>
       <div class="error-msg" id="login-error"></div>
     </div>
+    <footer class="site-footer"><span>Private by default. Effortless to share.</span><span>© Party RSVP</span></footer>
   </div>
 
   <script>

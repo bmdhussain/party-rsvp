@@ -8,12 +8,14 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="top-bar">
-      <div class="user" id="user-info"></div>
-      <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
-    </div>
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
+      <div class="header-nav"><div class="user" id="user-info"></div>
+      <a href="/dashboard" class="btn btn-ghost btn-small">Dashboard</a>
+      <button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
+    </header>
 
-    <div class="hero">
+    <div class="hero"><div class="eyebrow" style="color:#ffe0b1;">Your celebrations</div>
       <h1>My Events</h1>
     </div>
 
@@ -46,6 +48,7 @@
         </div>
       </form>
     </div>
+    <footer class="site-footer"><span>Plan something worth remembering.</span><a href="/">Party RSVP</a></footer>
   </div>
 
   <script src="/dashboard.js"></script>

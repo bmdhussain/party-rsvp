@@ -8,7 +8,11 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap narrow">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
+      <nav class="header-nav"><a href="/" class="btn btn-ghost btn-small">Host an event</a></nav>
+    </header>
     <div id="banner-wrap" style="display:none;">
       <div class="invite-banner">
         <img id="banner-img" alt="" />
@@ -19,11 +23,10 @@
           <div class="meta" id="banner-location"></div>
         </div>
       </div>
-      <p class="desc" id="banner-desc" style="text-align:center; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.25);"></p>
+      <p class="desc" id="banner-desc" style="text-align:center;"></p>
     </div>
 
     <div id="plain-hero-wrap">
-      <div class="balloons">🎈 🎉 🎈</div>
       <div class="hero">
         <h1 id="event-name">Loading party details…</h1>
         <div class="meta" id="event-date"></div>
@@ -33,12 +36,12 @@
     </div>
 
     <div class="share-row">
-      <button class="btn btn-ghost" id="copy-link-btn">🔗 Copy invite link to share</button>
+      <button class="btn btn-ghost" id="copy-link-btn">Copy invite link to share</button>
     </div>
 
     <div class="card" id="rsvp-card">
       <h2>RSVP</h2>
-      <div class="hint" id="invite-only-note" style="display:none; margin-bottom:14px;">🔒 This is an invite-only event — please RSVP with the email address you were invited on.</div>
+       <div class="hint" id="invite-only-note" style="display:none; margin-bottom:14px;">This is an invite-only event — please RSVP with the email address you were invited on.</div>
       <form id="rsvp-form">
         <label for="name">Your name</label>
         <input type="text" id="name" name="name" required maxlength="100" placeholder="Jamie Rivera" />
@@ -51,11 +54,11 @@
         <div class="attending-toggle">
           <label style="margin:0;">
             <input type="radio" name="attending" value="yes" checked />
-            <div class="opt">🎉 Yes, count me in!</div>
+           <div class="opt">Yes, count me in</div>
           </label>
           <label style="margin:0;">
             <input type="radio" name="attending" value="no" />
-            <div class="opt">😢 Can't make it</div>
+           <div class="opt">Can't make it</div>
           </label>
         </div>
 
@@ -90,15 +93,14 @@
     </div>
 
     <div class="card">
-      <h2>💬 Party Wall</h2>
+      <h2>Party wall</h2>
       <div id="comments-list">
         <div class="empty-note">Loading comments…</div>
       </div>
     </div>
 
-    <div class="footer-link">
-      <a href="/">Want to host your own event? →</a>
-    </div>
+    <div class="footer-link"><a href="/">Want to host your own event?</a></div>
+    <footer class="site-footer"><span>Made for meaningful gatherings.</span><span>Party RSVP</span></footer>
   </div>
 
   <script src="/event.js"></script>

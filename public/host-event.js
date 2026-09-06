@@ -12,6 +12,8 @@ function formatWhen(iso) {
 }
 
 let lastData = null;
+let selectedTemplate = null;
+let selectedTint = 'warm';
 
 async function loadDashboard() {
   try {
@@ -91,7 +93,7 @@ function render(data) {
       <tr>
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.email)}</td>
-        <td><span class="pill ${r.attending ? 'badge yes' : 'badge no'}">${r.attending ? '🎉 Yes' : '😢 No'}</span></td>
+        <td><span class="pill ${r.attending ? 'badge yes' : 'badge no'}">${r.attending ? 'Yes' : 'No'}</span></td>
         <td>${r.attending ? r.adults : '—'}</td>
         <td>${r.attending ? r.kids : '—'}</td>
         <td>${escapeHtml(r.comment || '')}</td>
@@ -151,24 +153,61 @@ async function loadTemplates() {
       .join('');
 
     grid.querySelectorAll('.template-thumb').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        try {
-          const res = await fetch(`/api/events/${EVENT_ID}/template`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ templateId: btn.dataset.id }),
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Could not set template.');
-          loadDashboard();
-        } catch (err) {
-          document.getElementById('image-error').textContent = err.message;
-          document.getElementById('image-error').style.display = 'block';
-        }
+      btn.addEventListener('click', () => {
+        selectedTemplate = templates.find((template) => template.id === btn.dataset.id);
+        grid.querySelectorAll('.template-thumb').forEach((item) => item.classList.toggle('selected', item === btn));
+        document.getElementById('template-customizer').style.display = 'block';
+        document.getElementById('template-customizer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     });
   } catch (err) {
     grid.innerHTML = '<div class="empty-note">Couldn\'t load templates.</div>';
+  }
+}
+
+async function useOriginalTemplate() {
+  const errorBox = document.getElementById('image-error');
+  if (!selectedTemplate) return;
+  errorBox.style.display = 'none';
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/template`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId: selectedTemplate.id }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not set template.');
+    loadDashboard();
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+  }
+}
+
+async function saveCustomizedTemplate() {
+  const errorBox = document.getElementById('image-error');
+  if (!selectedTemplate) return;
+  errorBox.style.display = 'none';
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.src = selectedTemplate.previewUrl;
+  try {
+    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const tint = { warm: 'rgba(238,128,88,.15)', bright: 'rgba(255,245,204,.12)', cool: 'rgba(47,116,153,.16)' }[selectedTint];
+    ctx.fillStyle = tint; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .9));
+    const formData = new FormData(); formData.append('image', blob, `${selectedTemplate.id}-${selectedTint}.jpg`);
+    const res = await fetch(`/api/events/${EVENT_ID}/image`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save this variation.');
+    loadDashboard();
+  } catch (err) {
+    errorBox.textContent = err.message; errorBox.style.display = 'block';
   }
 }
 
@@ -193,6 +232,15 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
     e.target.value = '';
   }
 });
+
+document.querySelectorAll('.tint-btn').forEach((button) => {
+  button.addEventListener('click', () => {
+    selectedTint = button.dataset.tint;
+    document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item === button));
+  });
+});
+document.getElementById('use-original-template').addEventListener('click', useOriginalTemplate);
+document.getElementById('save-custom-template').addEventListener('click', saveCustomizedTemplate);
 
 document.getElementById('edit-event-form').addEventListener('submit', async (e) => {
   e.preventDefault();

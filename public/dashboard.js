@@ -39,10 +39,10 @@ async function loadEvents() {
         <div class="event-card">
           ${e.imageUrl ? `<img src="${escapeHtml(e.imageUrl)}" alt="" style="width:100%; aspect-ratio:1200/630; object-fit:cover; border-radius:10px; margin-bottom:10px;" />` : ''}
           <h3>${escapeHtml(e.name)}</h3>
-          <div class="meta" style="color:var(--muted); font-size:13px;">📅 ${formatWhen(e.event_date)}${e.location ? ` · 📍 ${escapeHtml(e.location)}` : ''}</div>
+          <div class="meta" style="color:var(--muted); font-size:13px;">${formatWhen(e.event_date)}${e.location ? ` · ${escapeHtml(e.location)}` : ''}</div>
           <div class="link-row">
             <input type="text" readonly value="${escapeHtml(e.shareUrl)}" onclick="this.select()" />
-            <button class="btn btn-ghost btn-small copy-btn" data-url="${escapeHtml(e.shareUrl)}">🔗 Copy</button>
+            <button class="btn btn-ghost btn-small copy-btn" data-url="${escapeHtml(e.shareUrl)}">Copy link</button>
             <a class="btn btn-ghost btn-small" href="/host/${e.id}">📊 Dashboard</a>
           </div>
         </div>`

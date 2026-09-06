@@ -8,12 +8,11 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="top-bar">
-      <a href="/dashboard" class="btn btn-ghost btn-small">← All events</a>
-      <button class="btn btn-ghost btn-small" id="logout-btn">Log out</button>
-    </div>
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
+      <div class="header-nav"><a href="/dashboard" class="btn btn-ghost btn-small">All events</a><button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
+    </header>
 
-    <div class="balloons">🎊</div>
     <div class="hero">
       <h1 id="event-title">Loading…</h1>
       <div class="meta">Guest headcounts are only visible here.</div>
@@ -26,7 +25,7 @@
 
     <div id="dashboard" style="display:none;">
       <div class="card">
-        <h2>🔗 Share this event</h2>
+        <h2>Share this event</h2>
         <div class="link-row">
           <input type="text" id="share-link" readonly onclick="this.select()" />
           <button class="btn btn-ghost btn-small" id="copy-link-btn">Copy</button>
@@ -34,7 +33,7 @@
       </div>
 
       <div class="card">
-        <h2>🖼️ Invitation Image</h2>
+        <h2>Invitation artwork</h2>
         <div id="image-preview-wrap">
           <img id="image-preview" style="display:none; max-width:100%; border-radius:14px; margin-bottom:14px;" />
           <div class="empty-note" id="image-empty">No image set — pick a template or upload your own below.</div>
@@ -43,6 +42,17 @@
         <div class="hint" style="margin-bottom:8px;">Choose a template</div>
         <div class="template-grid" id="template-grid">
           <div class="empty-note">Loading templates…</div>
+        </div>
+        <div id="template-customizer" style="display:none;margin-top:18px;">
+          <div class="hint" style="margin-bottom:8px;">Make it yours</div>
+          <div class="action-row" style="justify-content:flex-start;margin:0;">
+            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button>
+            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button>
+            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button>
+            <button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original</button>
+            <button type="button" class="btn btn-primary btn-small" id="save-custom-template">Use this variation</button>
+          </div>
+          <div class="hint">A private browser-side tint is baked into your invitation image before saving.</div>
         </div>
 
         <div style="margin-top:16px;">
@@ -53,15 +63,15 @@
       </div>
 
       <div class="card">
-        <h2>👥 Guest List Access</h2>
+        <h2>Guest list access</h2>
         <div class="attending-toggle">
           <label style="margin:0;">
             <input type="radio" name="invite-mode" value="open" checked />
-            <div class="opt">🌐 Anyone with the link</div>
+              <div class="opt">Anyone with the link</div>
           </label>
           <label style="margin:0;">
             <input type="radio" name="invite-mode" value="restricted" />
-            <div class="opt">🔒 Only invited emails</div>
+              <div class="opt">Only invited emails</div>
           </label>
         </div>
 
@@ -92,7 +102,7 @@
       </div>
 
       <div class="card">
-        <h2>✏️ Event Details</h2>
+        <h2>Event details</h2>
         <form id="edit-event-form">
           <label for="edit-name">Event name</label>
           <input type="text" id="edit-name" required maxlength="150" />
@@ -117,7 +127,7 @@
       </div>
 
       <div class="card">
-        <h2>🎈 Headcount</h2>
+        <h2>Headcount</h2>
         <div class="stats-grid">
           <div class="stat-tile">
             <div class="num" id="stat-attending">0</div>
@@ -164,6 +174,7 @@
         <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet.</div>
       </div>
     </div>
+    <footer class="site-footer"><span>Private host space</span><a href="/dashboard">Back to dashboard</a></footer>
   </div>
 
   <script src="/host-event.js"></script>
