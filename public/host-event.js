@@ -14,6 +14,149 @@ function formatWhen(iso) {
 let lastData = null;
 let selectedTemplate = null;
 let selectedTint = 'warm';
+let allTemplates = [];
+let activeTemplateFilter = 'all';
+let currentInvites = [];
+const EDITOR_WIDTH = 1200;
+const EDITOR_HEIGHT = 630;
+const editorState = {
+  backgroundImage: null,
+  layers: [],
+  selectedId: null,
+  dragging: null,
+};
+
+const layerControlIds = {
+  title: 'layer-title',
+  date: 'layer-date',
+  time: 'layer-time',
+  location: 'layer-location',
+};
+
+function formatLayerDate(iso) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function formatLayerTime(iso) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function makeDefaultLayers(event) {
+  return [
+    { id: 'title', text: event.name || 'Your event', x: 600, y: 168, size: 68, weight: 700, family: 'Fraunces', visible: true },
+    { id: 'date', text: formatLayerDate(event.event_date), x: 600, y: 278, size: 30, weight: 700, family: 'DM Sans', visible: true },
+    { id: 'time', text: formatLayerTime(event.event_date), x: 600, y: 326, size: 25, weight: 600, family: 'DM Sans', visible: true },
+    { id: 'location', text: event.location || 'Add a location', x: 600, y: 390, size: 27, weight: 600, family: 'DM Sans', visible: Boolean(event.location) },
+  ].map((layer) => ({ ...layer, color: '#2f2238' }));
+}
+
+function syncLayerControls() {
+  editorState.layers.forEach((layer) => {
+    const input = document.getElementById(layerControlIds[layer.id]);
+    const toggle = document.querySelector(`[data-layer-toggle="${layer.id}"]`);
+    if (input) input.value = layer.text;
+    if (toggle) toggle.checked = layer.visible;
+  });
+}
+
+function resetEditorLayers() {
+  if (!lastData) return;
+  editorState.layers = makeDefaultLayers(lastData.event);
+  editorState.selectedId = 'title';
+  document.getElementById('layer-style').value = 'editorial';
+  document.getElementById('layer-color').value = '#2f2238';
+  syncLayerControls();
+  drawEditor();
+}
+
+function drawImageCover(ctx, image) {
+  const scale = Math.max(EDITOR_WIDTH / image.naturalWidth, EDITOR_HEIGHT / image.naturalHeight);
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
+  ctx.drawImage(image, (EDITOR_WIDTH - width) / 2, (EDITOR_HEIGHT - height) / 2, width, height);
+}
+
+function layerBounds(ctx, layer) {
+  ctx.font = `${layer.weight} ${layer.size}px "${layer.family}", sans-serif`;
+  const maxWidth = EDITOR_WIDTH - 120;
+  const width = Math.min(ctx.measureText(layer.text || ' ').width, maxWidth);
+  return { left: layer.x - width / 2 - 16, top: layer.y - layer.size / 2 - 12, width: width + 32, height: layer.size + 24 };
+}
+
+function drawEditor() {
+  const canvas = document.getElementById('image-editor-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, EDITOR_WIDTH, EDITOR_HEIGHT);
+  if (!editorState.backgroundImage) return;
+
+  ctx.fillStyle = '#f7f1e9';
+  ctx.fillRect(0, 0, EDITOR_WIDTH, EDITOR_HEIGHT);
+  drawImageCover(ctx, editorState.backgroundImage);
+  const tint = { warm: 'rgba(238,128,88,.13)', bright: 'rgba(255,245,204,.1)', cool: 'rgba(47,116,153,.15)' }[selectedTint];
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, EDITOR_WIDTH, EDITOR_HEIGHT);
+
+  editorState.layers.filter((layer) => layer.visible && layer.text.trim()).forEach((layer) => {
+    let size = layer.size;
+    ctx.font = `${layer.weight} ${size}px "${layer.family}", sans-serif`;
+    while (size > 16 && ctx.measureText(layer.text).width > EDITOR_WIDTH - 120) {
+      size -= 2;
+      ctx.font = `${layer.weight} ${size}px "${layer.family}", sans-serif`;
+    }
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = layer.color;
+    const rgb = layer.color.match(/[a-f\d]{2}/gi)?.map((value) => parseInt(value, 16)) || [255, 255, 255];
+    const isLightText = (rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000 > 150;
+    ctx.shadowColor = isLightText ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.75)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 4;
+    ctx.fillText(layer.text, layer.x, layer.y);
+    ctx.shadowColor = 'transparent';
+
+    if (editorState.selectedId === layer.id) {
+      const bounds = layerBounds(ctx, { ...layer, size });
+      ctx.strokeStyle = 'rgba(255,255,255,.9)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([9, 7]);
+      ctx.strokeRect(bounds.left, bounds.top, bounds.width, bounds.height);
+      ctx.setLineDash([]);
+    }
+  });
+}
+
+function loadEditorBackground(imageUrl, { resetLayers = false } = {}) {
+  const canvas = document.getElementById('image-editor-canvas');
+  const empty = document.getElementById('image-empty');
+  if (!imageUrl) {
+    editorState.backgroundImage = null;
+    editorState.layers = [];
+    canvas.style.display = 'none';
+    empty.style.display = 'grid';
+    return Promise.resolve();
+  }
+
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  return new Promise((resolve, reject) => {
+    image.onload = () => {
+      editorState.backgroundImage = image;
+      if (resetLayers) resetEditorLayers();
+      canvas.style.display = 'block';
+      empty.style.display = 'none';
+      drawEditor();
+      resolve();
+    };
+    image.onerror = reject;
+    image.src = imageUrl;
+  });
+}
 
 async function loadDashboard() {
   try {
@@ -42,30 +185,33 @@ function toLocalInputValue(iso) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function renderImagePreview(imageUrl) {
-  const img = document.getElementById('image-preview');
-  const empty = document.getElementById('image-empty');
-  if (imageUrl) {
-    img.src = `${imageUrl}?t=${Date.now()}`;
-    img.style.display = 'block';
-    empty.style.display = 'none';
-  } else {
-    img.style.display = 'none';
-    empty.style.display = 'block';
-  }
+function futureDateTimeMinimum() {
+  const date = new Date(Date.now() + 60 * 1000);
+  date.setSeconds(0, 0);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function render(data) {
   document.getElementById('event-title').textContent = data.event.name;
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('share-link').value = data.event.shareUrl;
+  const previewLink = document.getElementById('public-preview-link');
+  previewLink.href = data.event.shareUrl;
 
   document.getElementById('edit-name').value = data.event.name;
-  document.getElementById('edit-date').value = toLocalInputValue(data.event.event_date);
+  const editDate = document.getElementById('edit-date');
+  editDate.min = futureDateTimeMinimum();
+  editDate.value = toLocalInputValue(data.event.event_date);
   document.getElementById('edit-location').value = data.event.location || '';
   document.getElementById('edit-description').value = data.event.description || '';
 
-  renderImagePreview(data.event.imageUrl);
+  editorState.layers = [];
+  editorState.selectedId = null;
+  loadEditorBackground(data.event.imageUrl ? `${data.event.imageUrl}?t=${Date.now()}` : null).catch(() => {
+    document.getElementById('image-editor-canvas').style.display = 'none';
+    document.getElementById('image-empty').style.display = 'grid';
+  });
 
   const mode = data.event.invite_mode || 'open';
   document.querySelector(`input[name="invite-mode"][value="${mode}"]`).checked = true;
@@ -103,13 +249,44 @@ function render(data) {
     .join('');
 }
 
-function mailto(emails) {
-  if (!emails.length) {
+function eventEmailDetails(event) {
+  const details = [
+    `Event: ${event.name}`,
+    event.event_date ? `When: ${formatWhen(event.event_date)}` : '',
+    event.location ? `Where: ${event.location}` : '',
+  ].filter(Boolean);
+  return details.join('\n');
+}
+
+function composeGuestEmail({ emails, subject, intro, event = lastData?.event }) {
+  const uniqueEmails = [...new Set((emails || []).map((email) => String(email).trim().toLowerCase()).filter(Boolean))];
+  if (!uniqueEmails.length) {
     window.alert('No guest emails to send to yet.');
     return;
   }
-  const bcc = encodeURIComponent([...new Set(emails)].join(','));
-  window.location.href = `mailto:?bcc=${bcc}&subject=${encodeURIComponent('Party update!')}`;
+  if (!event?.shareUrl) {
+    window.alert('The event link is not ready yet. Refresh and try again.');
+    return;
+  }
+
+  const body = [
+    'PARTY RSVP',
+    '',
+    intro,
+    '',
+    eventEmailDetails(event),
+    event.description ? `\n${event.description}` : '',
+    '',
+    `Open the event page: ${event.shareUrl}`,
+    '',
+    'You can RSVP, check the latest details, and leave a note there.',
+    '',
+    'Made with Party RSVP — make room for good news.',
+  ].filter(Boolean).join('\n');
+
+  const bcc = encodeURIComponent(uniqueEmails.join(','));
+  const encodedSubject = encodeURIComponent(subject);
+  window.location.href = `mailto:?bcc=${bcc}&subject=${encodedSubject}&body=${encodeURIComponent(body)}`;
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
@@ -129,23 +306,59 @@ document.getElementById('copy-link-btn').addEventListener('click', async () => {
 
 document.getElementById('email-attending-btn').addEventListener('click', () => {
   if (!lastData) return;
-  mailto(lastData.rsvps.filter((r) => r.attending).map((r) => r.email));
+  composeGuestEmail({
+    emails: lastData.rsvps.filter((r) => r.attending).map((r) => r.email),
+    subject: `You're on the guest list — ${lastData.event.name}`,
+    intro: `Hi! We’re excited to see you at ${lastData.event.name}. Here’s the invitation with the latest details:`,
+  });
 });
 
 document.getElementById('email-all-btn').addEventListener('click', () => {
   if (!lastData) return;
-  mailto(lastData.rsvps.map((r) => r.email));
+  composeGuestEmail({
+    emails: lastData.rsvps.map((r) => r.email),
+    subject: `A note about ${lastData.event.name}`,
+    intro: `Hi! Here’s a quick note about ${lastData.event.name}, along with the invitation and event details:`,
+  });
 });
 
 async function loadTemplates() {
   const grid = document.getElementById('template-grid');
   try {
     const res = await fetch('/api/templates');
-    const templates = await res.json();
-    grid.innerHTML = templates
+    allTemplates = await res.json();
+    const count = document.getElementById('template-count');
+    if (count) count.textContent = `${allTemplates.length} looks`;
+    renderTemplateGrid();
+  } catch (err) {
+    grid.innerHTML = '<div class="empty-note">Couldn\'t load templates.</div>';
+  }
+}
+
+function templateCategory(template) {
+  if (template.category) return template.category;
+  const id = `${template.id} ${template.label}`.toLowerCase();
+  if (/(corporate|citrus|holiday|new year)/.test(id)) return 'statement';
+  if (/(housewarming|baby|sunlit|celebration)/.test(id)) return 'gathering';
+  return 'celebration';
+}
+
+function renderTemplateGrid() {
+  const grid = document.getElementById('template-grid');
+  const query = (document.getElementById('template-search')?.value || '').trim().toLowerCase();
+  const templates = allTemplates.filter((template) => {
+    const matchesFilter = activeTemplateFilter === 'all' || templateCategory(template) === activeTemplateFilter;
+    const matchesSearch = !query || `${template.label} ${template.id}`.toLowerCase().includes(query);
+    return matchesFilter && matchesSearch;
+  });
+  if (!templates.length) {
+    grid.innerHTML = '<div class="empty-note">No looks match that search yet.</div>';
+    return;
+  }
+  grid.innerHTML = templates
       .map(
         (t) => `
-        <button type="button" class="template-thumb" data-id="${escapeHtml(t.id)}" title="${escapeHtml(t.label)}">
+        <button type="button" class="template-thumb" data-id="${escapeHtml(t.id)}" title="${escapeHtml(t.label)} · Public domain artwork" data-category="${templateCategory(t)}">
           <img src="${escapeHtml(t.previewUrl)}" alt="${escapeHtml(t.label)}" />
           <span>${escapeHtml(t.label)}</span>
         </button>`
@@ -153,16 +366,27 @@ async function loadTemplates() {
       .join('');
 
     grid.querySelectorAll('.template-thumb').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         selectedTemplate = templates.find((template) => template.id === btn.dataset.id);
         grid.querySelectorAll('.template-thumb').forEach((item) => item.classList.toggle('selected', item === btn));
+        const sourceNote = document.getElementById('template-source-note');
+        if (sourceNote && selectedTemplate.sourceUrl) {
+          sourceNote.innerHTML = `Artwork: <a href="${escapeHtml(selectedTemplate.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(selectedTemplate.sourceName || 'FreeSVG.org · Public Domain')}</a>.`;
+        }
         document.getElementById('template-customizer').style.display = 'block';
+        selectedTint = 'warm';
+        document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item.dataset.tint === selectedTint));
+        try {
+          await loadEditorBackground(selectedTemplate.previewUrl, { resetLayers: true });
+        } catch {
+          const errorBox = document.getElementById('image-error');
+          errorBox.textContent = 'Could not load this background.';
+          errorBox.style.display = 'block';
+          return;
+        }
         document.getElementById('template-customizer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     });
-  } catch (err) {
-    grid.innerHTML = '<div class="empty-note">Couldn\'t load templates.</div>';
-  }
 }
 
 async function useOriginalTemplate() {
@@ -186,25 +410,24 @@ async function useOriginalTemplate() {
 
 async function saveCustomizedTemplate() {
   const errorBox = document.getElementById('image-error');
-  if (!selectedTemplate) return;
+  if (!editorState.backgroundImage) return;
   errorBox.style.display = 'none';
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  image.src = selectedTemplate.previewUrl;
   try {
-    await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
-    const canvas = document.createElement('canvas');
-    canvas.width = image.naturalWidth;
-    canvas.height = image.naturalHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-    const tint = { warm: 'rgba(238,128,88,.15)', bright: 'rgba(255,245,204,.12)', cool: 'rgba(47,116,153,.16)' }[selectedTint];
-    ctx.fillStyle = tint; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const canvas = document.getElementById('image-editor-canvas');
+    const selectedId = editorState.selectedId;
+    editorState.selectedId = null;
+    drawEditor();
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .9));
-    const formData = new FormData(); formData.append('image', blob, `${selectedTemplate.id}-${selectedTint}.jpg`);
+    editorState.selectedId = selectedId;
+    drawEditor();
+    if (!blob) throw new Error('Could not render this invitation.');
+    const fileName = selectedTemplate?.id || 'custom-invitation';
+    const formData = new FormData(); formData.append('image', blob, `${fileName}-${selectedTint}.jpg`);
     const res = await fetch(`/api/events/${EVENT_ID}/image`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save this variation.');
+    editorState.layers = [];
+    editorState.selectedId = null;
     loadDashboard();
   } catch (err) {
     errorBox.textContent = err.message; errorBox.style.display = 'block';
@@ -224,7 +447,15 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
     const res = await fetch(`/api/events/${EVENT_ID}/image`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Upload failed.');
-    loadDashboard();
+    selectedTemplate = null;
+    selectedTint = 'warm';
+    document.getElementById('template-customizer').style.display = 'block';
+    document.querySelectorAll('.template-thumb').forEach((item) => item.classList.remove('selected'));
+    document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item.dataset.tint === selectedTint));
+    const localUrl = URL.createObjectURL(file);
+    await loadEditorBackground(localUrl, { resetLayers: true });
+    document.getElementById('template-customizer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setTimeout(() => URL.revokeObjectURL(localUrl), 30000);
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.style.display = 'block';
@@ -233,12 +464,114 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
   }
 });
 
+Object.entries(layerControlIds).forEach(([layerId, inputId]) => {
+  document.getElementById(inputId).addEventListener('input', (event) => {
+    const layer = editorState.layers.find((item) => item.id === layerId);
+    if (!layer) return;
+    layer.text = event.target.value;
+    editorState.selectedId = layerId;
+    drawEditor();
+  });
+});
+
+document.querySelectorAll('[data-layer-toggle]').forEach((toggle) => {
+  toggle.addEventListener('change', () => {
+    const layer = editorState.layers.find((item) => item.id === toggle.dataset.layerToggle);
+    if (!layer) return;
+    layer.visible = toggle.checked;
+    if (layer.visible) editorState.selectedId = layer.id;
+    drawEditor();
+  });
+});
+
+document.getElementById('layer-style').addEventListener('change', (event) => {
+  const preset = event.target.value;
+  editorState.layers.forEach((layer) => {
+    if (preset === 'modern') {
+      layer.family = 'DM Sans';
+      layer.weight = layer.id === 'title' ? 700 : 600;
+    } else if (preset === 'playful') {
+      layer.family = 'Fraunces';
+      layer.weight = 700;
+    } else {
+      layer.family = layer.id === 'title' ? 'Fraunces' : 'DM Sans';
+      layer.weight = layer.id === 'title' ? 700 : 600;
+    }
+  });
+  drawEditor();
+});
+
+document.getElementById('layer-color').addEventListener('input', (event) => {
+  editorState.layers.forEach((layer) => {
+    layer.color = event.target.value;
+  });
+  drawEditor();
+});
+
+document.getElementById('reset-layers').addEventListener('click', resetEditorLayers);
+
+const editorCanvas = document.getElementById('image-editor-canvas');
+
+function canvasPoint(event) {
+  const rect = editorCanvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * (EDITOR_WIDTH / rect.width),
+    y: (event.clientY - rect.top) * (EDITOR_HEIGHT / rect.height),
+  };
+}
+
+editorCanvas.addEventListener('pointerdown', (event) => {
+  if (!editorState.backgroundImage) return;
+  const point = canvasPoint(event);
+  const ctx = editorCanvas.getContext('2d');
+  const layer = [...editorState.layers].reverse().find((item) => {
+    if (!item.visible || !item.text.trim()) return false;
+    const bounds = layerBounds(ctx, item);
+    return point.x >= bounds.left && point.x <= bounds.left + bounds.width &&
+      point.y >= bounds.top && point.y <= bounds.top + bounds.height;
+  });
+  editorState.selectedId = layer?.id || null;
+  if (layer) {
+    editorState.dragging = { id: layer.id, offsetX: point.x - layer.x, offsetY: point.y - layer.y };
+    editorCanvas.setPointerCapture(event.pointerId);
+    editorCanvas.style.cursor = 'grabbing';
+  }
+  drawEditor();
+});
+
+editorCanvas.addEventListener('pointermove', (event) => {
+  if (!editorState.dragging) return;
+  const point = canvasPoint(event);
+  const layer = editorState.layers.find((item) => item.id === editorState.dragging.id);
+  if (!layer) return;
+  layer.x = Math.max(55, Math.min(EDITOR_WIDTH - 55, point.x - editorState.dragging.offsetX));
+  layer.y = Math.max(35, Math.min(EDITOR_HEIGHT - 35, point.y - editorState.dragging.offsetY));
+  drawEditor();
+});
+
+function stopDragging() {
+  editorState.dragging = null;
+  editorCanvas.style.cursor = 'grab';
+}
+
+editorCanvas.addEventListener('pointerup', stopDragging);
+editorCanvas.addEventListener('pointercancel', stopDragging);
+
 document.querySelectorAll('.tint-btn').forEach((button) => {
   button.addEventListener('click', () => {
     selectedTint = button.dataset.tint;
     document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item === button));
+    drawEditor();
   });
 });
+document.querySelectorAll('.filter-chip').forEach((button) => {
+  button.addEventListener('click', () => {
+    activeTemplateFilter = button.dataset.filter;
+    document.querySelectorAll('.filter-chip').forEach((item) => item.classList.toggle('active', item === button));
+    renderTemplateGrid();
+  });
+});
+document.getElementById('template-search').addEventListener('input', renderTemplateGrid);
 document.getElementById('use-original-template').addEventListener('click', useOriginalTemplate);
 document.getElementById('save-custom-template').addEventListener('click', saveCustomizedTemplate);
 
@@ -246,10 +579,17 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
   e.preventDefault();
   const errorBox = document.getElementById('edit-error');
   errorBox.style.display = 'none';
+  const dateValue = document.getElementById('edit-date').value;
+  if (!dateValue || new Date(dateValue).getTime() <= Date.now()) {
+    errorBox.textContent = 'Choose a date and time in the future.';
+    errorBox.style.display = 'block';
+    document.getElementById('edit-date').focus();
+    return;
+  }
 
   const payload = {
     name: document.getElementById('edit-name').value,
-    date: document.getElementById('edit-date').value,
+    date: dateValue,
     location: document.getElementById('edit-location').value,
     description: document.getElementById('edit-description').value,
   };
@@ -271,17 +611,11 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
 
 document.getElementById('notify-guests-btn').addEventListener('click', () => {
   if (!lastData) return;
-  const emails = [...new Set(lastData.rsvps.map((r) => r.email))];
-  if (!emails.length) {
-    window.alert('No guests to notify yet.');
-    return;
-  }
-  const bcc = encodeURIComponent(emails.join(','));
-  const subject = encodeURIComponent(`Update: ${lastData.event.name}`);
-  const body = encodeURIComponent(
-    `Hi! The details for ${lastData.event.name} have been updated.\n\nCheck the latest info here: ${lastData.event.shareUrl}`
-  );
-  window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+  composeGuestEmail({
+    emails: lastData.rsvps.map((r) => r.email),
+    subject: `Updated details — ${lastData.event.name}`,
+    intro: `Hi! The details for ${lastData.event.name} have been updated. Please use this invitation for the latest information:`,
+  });
 });
 
 async function loadInvites() {
@@ -290,6 +624,7 @@ async function loadInvites() {
   try {
     const res = await fetch(`/api/events/${EVENT_ID}/invites`);
     const invites = await res.json();
+    currentInvites = Array.isArray(invites) ? invites : [];
     if (!invites.length) {
       body.innerHTML = '';
       empty.style.display = 'block';
@@ -321,6 +656,15 @@ async function loadInvites() {
     empty.style.display = 'block';
   }
 }
+
+document.getElementById('email-invites-btn').addEventListener('click', () => {
+  if (!lastData) return;
+  composeGuestEmail({
+    emails: currentInvites.map((invite) => invite.email),
+    subject: `You're invited — ${lastData.event.name}`,
+    intro: `Hi! You’re invited to ${lastData.event.name}. We’d love to have you there — please RSVP on the event page:`,
+  });
+});
 
 document.querySelectorAll('input[name="invite-mode"]').forEach((radio) => {
   radio.addEventListener('change', async () => {

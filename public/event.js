@@ -66,24 +66,50 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function initials(name) {
+  return String(name || '')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+}
+
 async function loadComments() {
   const list = document.getElementById('comments-list');
   try {
     const res = await fetch(`/api/events/${SLUG}/comments`);
     const comments = await res.json();
     if (!comments.length) {
-      list.innerHTML = '<div class="empty-note">No messages yet — be the first to say hi!</div>';
+      document.getElementById('wall-response-count').innerHTML = '<strong>0</strong><span>notes</span>';
+      document.getElementById('wall-summary').style.display = 'none';
+      list.innerHTML = '<div class="wall-empty"><span>✦</span><strong>Be the first voice on the wall.</strong><p>Leave a note with your RSVP and get the party started.</p></div>';
       return;
     }
-    list.innerHTML = comments
+
+    const coming = comments.filter((comment) => comment.attending).length;
+    const away = comments.length - coming;
+    document.getElementById('wall-response-count').innerHTML =
+      `<strong>${comments.length}</strong><span>${comments.length === 1 ? 'note' : 'notes'}</span>`;
+    document.getElementById('wall-coming-count').textContent = coming;
+    document.getElementById('wall-away-count').textContent = away;
+    document.getElementById('wall-summary').style.display = 'flex';
+
+    const orderedComments = [
+      ...comments.filter((comment) => comment.attending),
+      ...comments.filter((comment) => !comment.attending),
+    ];
+    list.innerHTML = orderedComments
       .map(
-        (c) => `
-        <div class="comment-item">
-          <span class="who">${escapeHtml(c.name)}</span>
-          <span class="badge ${c.attending ? 'yes' : 'no'}">${c.attending ? 'Attending' : "Can't make it"}</span>
-          <div class="text">${escapeHtml(c.comment)}</div>
-          <div class="when">${timeAgo(c.created_at)}</div>
-        </div>`
+        (c, index) => `
+        <article class="comment-item ${c.attending ? 'is-coming' : 'is-away'}" style="--card-index:${index % 5}">
+          <div class="comment-topline">
+            <span class="comment-avatar" aria-hidden="true">${escapeHtml(initials(c.name))}</span>
+            <span class="comment-person"><strong>${escapeHtml(c.name)}</strong><small>${timeAgo(c.created_at)}</small></span>
+            <span class="wall-status ${c.attending ? 'yes' : 'no'}"><i></i>${c.attending ? 'Coming' : 'Sending love'}</span>
+          </div>
+          <blockquote>${escapeHtml(c.comment)}</blockquote>
+        </article>`
       )
       .join('');
   } catch (err) {

@@ -142,7 +142,16 @@ if (providers.facebook) {
 // --- Events (host, authenticated) ---
 
 app.get('/api/templates', (req, res) => {
-  res.json(TEMPLATES.map((t) => ({ id: t.id, label: t.label, previewUrl: `/templates/${t.file}` })));
+  res.json(
+    TEMPLATES.map((t) => ({
+      id: t.id,
+      label: t.label,
+      category: t.category,
+      previewUrl: `/templates/${t.file}`,
+      sourceName: 'FreeSVG.org · Public Domain',
+      sourceUrl: t.sourceUrl,
+    }))
+  );
 });
 
 app.get('/api/events', requireAuth, async (req, res) => {

@@ -7,47 +7,51 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap studio-home">
     <header class="site-header">
       <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
       <div class="header-nav"><div class="user" id="user-info"></div>
-      <a href="/dashboard" class="btn btn-ghost btn-small">Dashboard</a>
+      <span class="nav-current">Studio</span>
       <button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
     </header>
 
-    <div class="hero"><div class="eyebrow" style="color:#ffe0b1;">Your celebrations</div>
-      <h1>My Events</h1>
+    <div class="studio-hero">
+      <div>
+        <div class="eyebrow">Your invitation studio</div>
+        <h1>Make the moment feel like you.</h1>
+        <p>Shape the invite, gather your people, and keep the whole celebration in one beautiful place.</p>
+      </div>
+      <button class="btn btn-primary studio-hero-action" id="new-event-btn"><span class="btn-plus">+</span> Start an invitation</button>
     </div>
 
-    <div class="card">
-      <div id="events-list">
+    <div class="studio-intro-strip">
+      <div class="intro-icon">✦</div>
+      <div><strong>Your creative desk</strong><span>Every event is a living invitation. Open one to tune the mood, artwork, and guest list.</span></div>
+      <span class="intro-dot">New</span>
+    </div>
+
+    <section class="studio-section">
+      <div class="section-heading">
+        <div><span class="section-kicker">Your collection</span><h2>Invitations in progress</h2></div>
+        <span class="section-count" id="event-count"></span>
+      </div>
+      <div id="events-list" class="event-collection">
         <div class="empty-note">Loading your events…</div>
       </div>
+    </section>
 
-      <button class="btn btn-primary" id="new-event-btn" style="margin-top:16px;">+ Create Event</button>
-
-      <form id="new-event-form" class="new-event-form">
-        <label for="name">Event name</label>
-        <input type="text" id="name" required maxlength="150" placeholder="Alex's Birthday Bash" />
-
-        <label for="date">Date &amp; time</label>
-        <input type="text" id="date" placeholder="2026-10-10T18:00" />
-        <div class="hint">Format: YYYY-MM-DDTHH:MM (24-hour)</div>
-
-        <label for="location">Location</label>
-        <input type="text" id="location" maxlength="300" placeholder="123 Party Lane, Funtown" />
-
-        <label for="description">Description</label>
-        <textarea id="description" maxlength="1000" placeholder="Come celebrate with cake, music, and good vibes!"></textarea>
-
-        <div class="error-msg" id="create-error"></div>
-
-        <div style="margin-top:16px; display:flex; gap:10px;">
-          <button type="submit" class="btn btn-primary">Create</button>
-          <button type="button" class="btn btn-ghost" id="cancel-new-event">Cancel</button>
-        </div>
-      </form>
-    </div>
+    <form id="new-event-form" class="studio-create-panel">
+      <div class="create-panel-copy"><span class="section-kicker">New canvas</span><h2>Start with the feeling.</h2><p>Give your gathering a name and a few details. You can refine every part in the studio next.</p></div>
+      <div class="create-panel-fields">
+        <div class="field-span"><label for="name">Event name</label><input type="text" id="name" required maxlength="150" placeholder="Alex's Birthday Bash" /></div>
+        <div><label for="date">Date &amp; time</label><input type="datetime-local" id="date" required /><div class="hint">Choose a future date and time.</div></div>
+        <div><label for="location">Location</label><input type="text" id="location" maxlength="300" placeholder="123 Party Lane, Funtown" /></div>
+        <div class="field-span"><label for="description">Description</label><textarea id="description" maxlength="1000" placeholder="Come celebrate with cake, music, and good vibes!"></textarea></div>
+        <div class="error-msg field-span" id="create-error"></div>
+        <div class="create-actions field-span"><button type="submit" class="btn btn-primary">Open the studio</button><button type="button" class="btn btn-ghost" id="cancel-new-event">Not yet</button></div>
+      </div>
+    </form>
+    <button class="btn btn-ghost studio-create-trigger" id="new-event-trigger" type="button"><span class="btn-plus">+</span> Start another invitation</button>
     <footer class="site-footer"><span>Plan something worth remembering.</span><a href="/">Party RSVP</a></footer>
   </div>
 

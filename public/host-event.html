@@ -7,15 +7,15 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap studio-page">
     <header class="site-header">
       <a class="brand" href="/"><span class="brand-mark">P</span>Party RSVP</a>
-      <div class="header-nav"><a href="/dashboard" class="btn btn-ghost btn-small">All events</a><button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
+      <div class="header-nav"><a href="/dashboard" class="btn btn-ghost btn-small">← Studio</a><button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
     </header>
 
-    <div class="hero">
-      <h1 id="event-title">Loading…</h1>
-      <div class="meta">Guest headcounts are only visible here.</div>
+    <div class="studio-topline">
+      <div><span class="section-kicker">Invitation studio</span><h1 id="event-title">Loading…</h1><div class="studio-subtitle">A living invitation for your people.</div></div>
+      <div class="studio-top-actions"><button class="btn btn-ghost btn-small" id="refresh-btn">Refresh</button><button class="btn btn-primary btn-small" id="copy-link-btn">Copy invite link</button></div>
     </div>
 
     <div id="not-found" class="card" style="display:none;">
@@ -24,155 +24,74 @@
     </div>
 
     <div id="dashboard" style="display:none;">
-      <div class="card">
-        <h2>Share this event</h2>
-        <div class="link-row">
-          <input type="text" id="share-link" readonly onclick="this.select()" />
-          <button class="btn btn-ghost btn-small" id="copy-link-btn">Copy</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Invitation artwork</h2>
-        <div id="image-preview-wrap">
-          <img id="image-preview" style="display:none; max-width:100%; border-radius:14px; margin-bottom:14px;" />
-          <div class="empty-note" id="image-empty">No image set — pick a template or upload your own below.</div>
-        </div>
-
-        <div class="hint" style="margin-bottom:8px;">Choose a template</div>
-        <div class="template-grid" id="template-grid">
-          <div class="empty-note">Loading templates…</div>
-        </div>
-        <div id="template-customizer" style="display:none;margin-top:18px;">
-          <div class="hint" style="margin-bottom:8px;">Make it yours</div>
-          <div class="action-row" style="justify-content:flex-start;margin:0;">
-            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button>
-            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button>
-            <button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button>
-            <button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original</button>
-            <button type="button" class="btn btn-primary btn-small" id="save-custom-template">Use this variation</button>
-          </div>
-          <div class="hint">A private browser-side tint is baked into your invitation image before saving.</div>
-        </div>
-
-        <div style="margin-top:16px;">
-          <label for="image-upload">Or upload your own (JPEG/PNG/WebP, up to 4MB)</label>
-          <input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" />
-        </div>
-        <div class="error-msg" id="image-error"></div>
-      </div>
-
-      <div class="card">
-        <h2>Guest list access</h2>
-        <div class="attending-toggle">
-          <label style="margin:0;">
-            <input type="radio" name="invite-mode" value="open" checked />
-              <div class="opt">Anyone with the link</div>
-          </label>
-          <label style="margin:0;">
-            <input type="radio" name="invite-mode" value="restricted" />
-              <div class="opt">Only invited emails</div>
-          </label>
-        </div>
-
-        <div id="invite-list-section" style="display:none; margin-top:16px;">
-          <label for="invite-emails">Add emails (comma or newline separated)</label>
-          <textarea id="invite-emails" placeholder="jamie@example.com, sam@example.com"></textarea>
-          <div style="margin-top:10px;">
-            <button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">+ Add to guest list</button>
-          </div>
-          <div class="error-msg" id="invite-error"></div>
-
-          <div id="invite-table-wrap" style="margin-top:16px;">
-            <div class="table-scroll">
-              <table class="guest-table">
-                <thead>
-                  <tr>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="invite-table-body"></tbody>
-              </table>
+      <input type="hidden" id="share-link" />
+      <div class="studio-layout">
+        <main class="studio-main">
+          <section class="studio-canvas-card">
+            <div class="canvas-toolbar"><div><span class="section-kicker">Live canvas</span><strong>What your guests will feel</strong></div><span class="canvas-live"><i></i> Live preview</span></div>
+            <div class="invitation-stage" id="image-preview-wrap">
+              <canvas id="image-editor-canvas" width="1200" height="630" style="display:none;" aria-label="Invitation preview"></canvas>
+              <div class="invitation-stage-empty" id="image-empty"><span class="empty-art">✦</span><strong>Your invitation starts here.</strong><small>Pick a look from the studio shelf.</small></div>
             </div>
-            <div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet — add some above.</div>
-          </div>
+            <div class="canvas-caption"><span>Preview updates as you shape the details.</span><a id="public-preview-link" href="#" target="_blank" rel="noopener">View guest page ↗</a></div>
+          </section>
+
+          <section class="studio-card lookbook-card">
+            <div class="studio-card-heading"><div><span class="section-kicker">The lookbook</span><h2>Choose a mood</h2><p>Start with a feeling. You can make it yours in one click.</p></div><span class="section-count" id="template-count"></span></div>
+            <div class="lookbook-tools"><div class="template-filters" role="tablist" aria-label="Template filters"><button class="filter-chip active" type="button" data-filter="all">All looks</button><button class="filter-chip" type="button" data-filter="celebration">Celebrations</button><button class="filter-chip" type="button" data-filter="gathering">Gatherings</button><button class="filter-chip" type="button" data-filter="statement">Statement</button></div><input class="template-search" id="template-search" type="search" placeholder="Search the lookbook" aria-label="Search templates" /></div>
+             <div class="template-grid" id="template-grid"><div class="empty-note">Loading templates…</div></div>
+             <div class="template-source-note" id="template-source-note">Artwork sourced from <a href="https://freesvg.org/" target="_blank" rel="noopener">FreeSVG.org</a> and marked Public Domain.</div>
+            <div id="template-customizer" class="customizer-bar" style="display:none;">
+               <div class="layer-editor-intro"><div><strong>Add the essentials</strong><span>Edit the words, then drag them on the invite.</span></div><button type="button" class="btn btn-ghost btn-small" id="reset-layers">Reset text</button></div>
+               <div class="layer-fields">
+                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="title" checked /><span>Title</span></label><input type="text" id="layer-title" maxlength="100" placeholder="Event title" /></div>
+                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="date" checked /><span>Date</span></label><input type="text" id="layer-date" maxlength="60" placeholder="Date" /></div>
+                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="time" checked /><span>Time</span></label><input type="text" id="layer-time" maxlength="40" placeholder="Time" /></div>
+                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="location" checked /><span>Location</span></label><input type="text" id="layer-location" maxlength="120" placeholder="Location" /></div>
+               </div>
+               <div class="layer-style-row"><label for="layer-style">Text style</label><select id="layer-style"><option value="editorial">Editorial</option><option value="modern">Modern</option><option value="playful">Playful</option></select><label for="layer-color">Color</label><input id="layer-color" type="color" value="#2f2238" title="Text color" /><span class="layer-drag-hint">Click and drag text on the preview.</span></div>
+               <div class="customizer-actions"><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button><button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original</button><button type="button" class="btn btn-primary btn-small" id="save-custom-template">Use this variation</button></div>
+               <div class="hint">Your variation is rendered in the browser and saved through the existing image upload.</div>
+            </div>
+            <div class="upload-row"><label for="image-upload">Or bring your own artwork <span>JPEG, PNG, or WebP · 4MB max</span></label><input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" /></div>
+            <div class="error-msg" id="image-error"></div>
+          </section>
+        </main>
+
+        <aside class="studio-inspector">
+          <section class="studio-card inspector-card">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">Details</span><h2>Shape the moment</h2></div><span class="inspector-step">01</span></div>
+            <form id="edit-event-form">
+              <label for="edit-name">Event name</label><input type="text" id="edit-name" required maxlength="150" />
+              <label for="edit-date">Date &amp; time</label><input type="datetime-local" id="edit-date" required /><div class="hint">Choose a future date and time.</div>
+              <label for="edit-location">Location</label><input type="text" id="edit-location" maxlength="300" />
+              <label for="edit-description">Your note</label><textarea id="edit-description" maxlength="1000" placeholder="Give guests a little feeling for the day."></textarea>
+              <div class="error-msg" id="edit-error"></div>
+              <div class="inspector-save"><button type="submit" class="btn btn-primary btn-small">Save details</button><button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">Notify guests</button></div>
+            </form>
+          </section>
+
+          <section class="studio-card inspector-card access-card">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">Access</span><h2>Who gets in?</h2></div><span class="inspector-step">02</span></div>
+            <div class="attending-toggle">
+              <label style="margin:0;"><input type="radio" name="invite-mode" value="open" checked /><div class="opt"><strong>Open invite</strong><small>Anyone with the link</small></div></label>
+              <label style="margin:0;"><input type="radio" name="invite-mode" value="restricted" /><div class="opt"><strong>Guest list</strong><small>Only invited emails</small></div></label>
+            </div>
+            <div id="invite-list-section" style="display:none; margin-top:16px;">
+              <label for="invite-emails">Add people</label><textarea id="invite-emails" placeholder="jamie@example.com, sam@example.com"></textarea>
+              <div class="invite-add-row"><button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">Add to guest list</button><button type="button" class="btn btn-ghost btn-small" id="email-invites-btn">Email guest list</button></div><div class="error-msg" id="invite-error"></div>
+              <div id="invite-table-wrap" style="margin-top:16px;"><div class="table-scroll"><table class="guest-table"><thead><tr><th>Email</th><th>Status</th><th></th></tr></thead><tbody id="invite-table-body"></tbody></table></div><div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet.</div></div>
+            </div>
+          </section>
+        </aside>
         </div>
-      </div>
-
-      <div class="card">
-        <h2>Event details</h2>
-        <form id="edit-event-form">
-          <label for="edit-name">Event name</label>
-          <input type="text" id="edit-name" required maxlength="150" />
-
-          <label for="edit-date">Date &amp; time</label>
-          <input type="text" id="edit-date" placeholder="2026-10-10T18:00" />
-          <div class="hint">Format: YYYY-MM-DDTHH:MM (24-hour)</div>
-
-          <label for="edit-location">Location</label>
-          <input type="text" id="edit-location" maxlength="300" />
-
-          <label for="edit-description">Description</label>
-          <textarea id="edit-description" maxlength="1000"></textarea>
-
-          <div class="error-msg" id="edit-error"></div>
-
-          <div class="action-row">
-            <button type="submit" class="btn btn-primary btn-small">Save changes</button>
-            <button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">✉️ Notify guests of this update</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card">
-        <h2>Headcount</h2>
-        <div class="stats-grid">
-          <div class="stat-tile">
-            <div class="num" id="stat-attending">0</div>
-            <div class="label">RSVPs Yes</div>
-          </div>
-          <div class="stat-tile">
-            <div class="num" id="stat-adults">0</div>
-            <div class="label">Adults</div>
-          </div>
-          <div class="stat-tile">
-            <div class="num" id="stat-kids">0</div>
-            <div class="label">Kids</div>
-          </div>
-          <div class="stat-tile">
-            <div class="num" id="stat-declined">0</div>
-            <div class="label">Declined</div>
-          </div>
-        </div>
-        <div class="action-row">
-          <button class="btn btn-ghost btn-small" id="refresh-btn">🔄 Refresh</button>
-          <button class="btn btn-ghost btn-small" id="email-attending-btn">✉️ Email attending guests</button>
-          <button class="btn btn-ghost btn-small" id="email-all-btn">✉️ Email everyone</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Guest List</h2>
-        <div class="table-scroll">
-          <table class="guest-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Adults</th>
-                <th>Kids</th>
-                <th>Message</th>
-                <th>Submitted</th>
-              </tr>
-            </thead>
-            <tbody id="guest-table-body"></tbody>
-          </table>
-        </div>
-        <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet.</div>
-      </div>
+      <section class="guest-pulse studio-card">
+        <div class="studio-card-heading"><div><span class="section-kicker">The pulse</span><h2>Feel the room fill up</h2><p>Keep an eye on replies without leaving your creative flow.</p></div><div class="pulse-actions"><button class="btn btn-ghost btn-small" id="email-attending-btn">Email attending</button><button class="btn btn-ghost btn-small" id="email-all-btn">Email everyone</button></div></div>
+        <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
+        <div class="guest-list-heading"><h3>Guest notes</h3><span>Private host view</span></div>
+        <div class="table-scroll"><table class="guest-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Submitted</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
+        <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet — share your invitation to get the first hello.</div>
+      </section>
     </div>
     <footer class="site-footer"><span>Private host space</span><a href="/dashboard">Back to dashboard</a></footer>
   </div>
