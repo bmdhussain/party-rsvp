@@ -148,7 +148,7 @@ app.get('/api/templates', (req, res) => {
       label: t.label,
       category: t.category,
       previewUrl: `/templates/${t.file}`,
-      sourceName: 'FreeSVG.org · Public Domain',
+      sourceName: t.sourceName,
       sourceUrl: t.sourceUrl,
     }))
   );
