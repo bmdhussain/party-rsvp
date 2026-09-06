@@ -254,7 +254,7 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
-    `SELECT id, slug, owner_id, name, event_date, location, description, created_at,
+    `SELECT id, slug, owner_id, name, event_date, location, description, created_at, invite_mode,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
      FROM events WHERE id = $1 AND owner_id = $2`,
     [req.params.eventId, req.user.id]
@@ -291,18 +291,98 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   });
 });
 
+function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : '';
+}
+
+app.post('/api/events/:eventId/invite-mode', requireAuth, verifySameOrigin, async (req, res) => {
+  const mode = req.body?.mode;
+  if (mode !== 'open' && mode !== 'restricted') {
+    return res.status(400).json({ error: 'Invalid invite mode.' });
+  }
+  const { rowCount } = await pool.query(
+    'UPDATE events SET invite_mode = $1 WHERE id = $2 AND owner_id = $3',
+    [mode, req.params.eventId, req.user.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
+  res.json({ ok: true });
+});
+
+app.get('/api/events/:eventId/invites', requireAuth, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const { rows } = await pool.query(
+    `SELECT i.email, i.created_at,
+            EXISTS (
+              SELECT 1 FROM rsvps r WHERE r.event_id = i.event_id AND lower(r.email) = i.email
+            ) AS responded
+     FROM event_invites i
+     WHERE i.event_id = $1
+     ORDER BY i.created_at DESC`,
+    [req.params.eventId]
+  );
+  res.json(rows);
+});
+
+app.post('/api/events/:eventId/invites', requireAuth, verifySameOrigin, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const rawEmails = Array.isArray(req.body?.emails) ? req.body.emails : [];
+  const emails = [...new Set(rawEmails.map(normalizeEmail))].filter(
+    (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+  );
+  if (!emails.length) {
+    return res.status(400).json({ error: 'No valid email addresses found.' });
+  }
+
+  for (const email of emails.slice(0, 500)) {
+    await pool.query(
+      `INSERT INTO event_invites (event_id, email) VALUES ($1, $2)
+       ON CONFLICT (event_id, email) DO NOTHING`,
+      [req.params.eventId, email]
+    );
+  }
+  res.json({ ok: true, added: emails.length });
+});
+
+app.delete('/api/events/:eventId/invites/:email', requireAuth, verifySameOrigin, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  await pool.query('DELETE FROM event_invites WHERE event_id = $1 AND email = $2', [
+    req.params.eventId,
+    normalizeEmail(req.params.email),
+  ]);
+  res.json({ ok: true });
+});
+
 // --- Public event + RSVP (no auth — anyone with the link) ---
 
 app.get('/api/events/:slug/public', async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT name, event_date, location, description,
+    `SELECT name, event_date, location, description, invite_mode,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
      FROM events WHERE slug = $1`,
     [req.params.slug]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
-  const { has_image, ...event } = rows[0];
-  res.json({ ...event, imageUrl: makeImageUrl(req, req.params.slug, has_image) });
+  const { has_image, invite_mode, ...event } = rows[0];
+  res.json({
+    ...event,
+    inviteOnly: invite_mode === 'restricted',
+    imageUrl: makeImageUrl(req, req.params.slug, has_image),
+  });
 });
 
 app.get('/api/events/:slug/image', async (req, res) => {
@@ -341,9 +421,10 @@ app.get('/api/events/:slug/comments', async (req, res) => {
 });
 
 app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
-  const { rows: eventRows } = await pool.query('SELECT id FROM events WHERE slug = $1', [
-    req.params.slug,
-  ]);
+  const { rows: eventRows } = await pool.query(
+    'SELECT id, invite_mode FROM events WHERE slug = $1',
+    [req.params.slug]
+  );
   if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
 
   const { name, email, attending, adults, kids, comment } = req.body || {};
@@ -357,6 +438,18 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   ) {
     return res.status(400).json({ error: 'A valid email is required.' });
+  }
+
+  if (eventRows[0].invite_mode === 'restricted') {
+    const { rows: inviteRows } = await pool.query(
+      'SELECT 1 FROM event_invites WHERE event_id = $1 AND email = $2',
+      [eventRows[0].id, normalizeEmail(email)]
+    );
+    if (!inviteRows[0]) {
+      return res.status(403).json({
+        error: "This event is invite-only and this email isn't on the guest list. Please check with the host.",
+      });
+    }
   }
 
   const isAttending = attending === 'yes';

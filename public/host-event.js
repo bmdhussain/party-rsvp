@@ -65,6 +65,11 @@ function render(data) {
 
   renderImagePreview(data.event.imageUrl);
 
+  const mode = data.event.invite_mode || 'open';
+  document.querySelector(`input[name="invite-mode"][value="${mode}"]`).checked = true;
+  document.getElementById('invite-list-section').style.display = mode === 'restricted' ? 'block' : 'none';
+  if (mode === 'restricted') loadInvites();
+
   document.getElementById('stat-attending').textContent = data.totals.attendingCount;
   document.getElementById('stat-adults').textContent = data.totals.adults;
   document.getElementById('stat-kids').textContent = data.totals.kids;
@@ -229,6 +234,89 @@ document.getElementById('notify-guests-btn').addEventListener('click', () => {
     `Hi! The details for ${lastData.event.name} have been updated.\n\nCheck the latest info here: ${lastData.event.shareUrl}`
   );
   window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+});
+
+async function loadInvites() {
+  const body = document.getElementById('invite-table-body');
+  const empty = document.getElementById('invite-empty');
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/invites`);
+    const invites = await res.json();
+    if (!invites.length) {
+      body.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    body.innerHTML = invites
+      .map(
+        (i) => `
+        <tr>
+          <td>${escapeHtml(i.email)}</td>
+          <td><span class="pill ${i.responded ? 'badge yes' : 'badge no'}">${i.responded ? '✅ Responded' : '⏳ Pending'}</span></td>
+          <td><button type="button" class="btn btn-ghost btn-small remove-invite-btn" data-email="${escapeHtml(i.email)}">Remove</button></td>
+        </tr>`
+      )
+      .join('');
+
+    body.querySelectorAll('.remove-invite-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await fetch(`/api/events/${EVENT_ID}/invites/${encodeURIComponent(btn.dataset.email)}`, {
+          method: 'DELETE',
+        });
+        loadInvites();
+      });
+    });
+  } catch (err) {
+    body.innerHTML = '';
+    empty.textContent = "Couldn't load the guest list.";
+    empty.style.display = 'block';
+  }
+}
+
+document.querySelectorAll('input[name="invite-mode"]').forEach((radio) => {
+  radio.addEventListener('change', async () => {
+    document.getElementById('invite-list-section').style.display =
+      radio.value === 'restricted' && radio.checked ? 'block' : 'none';
+    try {
+      await fetch(`/api/events/${EVENT_ID}/invite-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: radio.value }),
+      });
+      if (radio.value === 'restricted') loadInvites();
+    } catch (err) {
+      // Non-fatal — the toggle stays visually selected; a refresh will show the real state.
+    }
+  });
+});
+
+document.getElementById('add-invites-btn').addEventListener('click', async () => {
+  const textarea = document.getElementById('invite-emails');
+  const errorBox = document.getElementById('invite-error');
+  errorBox.style.display = 'none';
+
+  const emails = textarea.value
+    .split(/[,\n;]+/)
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  if (!emails.length) return;
+
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/invites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emails }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not add emails.');
+    textarea.value = '';
+    loadInvites();
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+  }
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {

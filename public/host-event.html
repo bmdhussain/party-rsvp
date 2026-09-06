@@ -53,6 +53,45 @@
       </div>
 
       <div class="card">
+        <h2>👥 Guest List Access</h2>
+        <div class="attending-toggle">
+          <label style="margin:0;">
+            <input type="radio" name="invite-mode" value="open" checked />
+            <div class="opt">🌐 Anyone with the link</div>
+          </label>
+          <label style="margin:0;">
+            <input type="radio" name="invite-mode" value="restricted" />
+            <div class="opt">🔒 Only invited emails</div>
+          </label>
+        </div>
+
+        <div id="invite-list-section" style="display:none; margin-top:16px;">
+          <label for="invite-emails">Add emails (comma or newline separated)</label>
+          <textarea id="invite-emails" placeholder="jamie@example.com, sam@example.com"></textarea>
+          <div style="margin-top:10px;">
+            <button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">+ Add to guest list</button>
+          </div>
+          <div class="error-msg" id="invite-error"></div>
+
+          <div id="invite-table-wrap" style="margin-top:16px;">
+            <div class="table-scroll">
+              <table class="guest-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="invite-table-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet — add some above.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
         <h2>✏️ Event Details</h2>
         <form id="edit-event-form">
           <label for="edit-name">Event name</label>

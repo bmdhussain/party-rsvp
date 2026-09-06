@@ -39,6 +39,10 @@ async function loadEvent() {
         document.getElementById('event-location').textContent = `📍 ${event.location}`;
       }
     }
+
+    if (event.inviteOnly) {
+      document.getElementById('invite-only-note').style.display = 'block';
+    }
   } catch (err) {
     document.getElementById('event-name').textContent = 'Event not found';
     document.getElementById('rsvp-card').style.display = 'none';
