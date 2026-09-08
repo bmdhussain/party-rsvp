@@ -17,6 +17,7 @@ let selectedTint = 'warm';
 let allTemplates = [];
 let activeTemplateFilter = 'all';
 let currentInvites = [];
+let activeStudioStage = 'choose';
 const EDITOR_WIDTH = 1200;
 const EDITOR_HEIGHT = 630;
 const editorState = {
@@ -25,6 +26,57 @@ const editorState = {
   selectedId: null,
   dragging: null,
 };
+let editorLoadSequence = 0;
+
+const studioStageOrder = ['choose', 'personalize', 'share'];
+
+function setStudioStage(stage, { scroll = false } = {}) {
+  const nextStage = studioStageOrder.includes(stage) ? stage : 'choose';
+  activeStudioStage = nextStage;
+  const currentIndex = studioStageOrder.indexOf(nextStage);
+
+  document.querySelectorAll('[data-studio-stage]').forEach((step) => {
+    const stepIndex = studioStageOrder.indexOf(step.dataset.studioStage);
+    const isActive = step.dataset.studioStage === nextStage;
+    step.classList.toggle('active', isActive);
+    step.classList.toggle('completed', stepIndex < currentIndex);
+    step.setAttribute('aria-current', isActive ? 'step' : 'false');
+  });
+
+  const shareBadge = document.getElementById('share-ready-badge');
+  const shareNote = document.getElementById('share-panel-note');
+  const hasSavedInvitation = Boolean(lastData?.event?.imageUrl);
+  if (shareBadge) {
+    shareBadge.textContent = hasSavedInvitation ? 'Ready to share' : 'Not saved yet';
+    shareBadge.classList.toggle('is-ready', hasSavedInvitation);
+  }
+  if (shareNote) {
+    shareNote.textContent = hasSavedInvitation
+      ? 'Your guest page is live. Share the link whenever you are ready.'
+      : 'Choose a look and save your invitation to unlock sharing.';
+  }
+
+  if (!scroll) return;
+  const targetId = nextStage === 'choose' ? 'lookbook-section' : nextStage === 'personalize' ? 'template-customizer' : 'share-panel';
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  if (nextStage === 'personalize' && !editorState.backgroundImage) {
+    setStudioStage('choose', { scroll: true });
+    return;
+  }
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.querySelectorAll('[data-studio-stage]').forEach((step) => {
+  step.addEventListener('click', () => {
+    const stage = step.dataset.studioStage;
+    if (stage === 'share' && !lastData?.event?.imageUrl) {
+      setStudioStage('choose', { scroll: true });
+      return;
+    }
+    setStudioStage(stage, { scroll: true });
+  });
+});
 
 const layerControlIds = {
   title: 'layer-title',
@@ -75,8 +127,34 @@ function resetEditorLayers() {
   drawEditor();
 }
 
-function drawImageCover(ctx, image) {
-  const scale = Math.max(EDITOR_WIDTH / image.naturalWidth, EDITOR_HEIGHT / image.naturalHeight);
+function setEditorStatus(state, message) {
+  const status = document.getElementById('editor-status');
+  if (!status) return;
+  status.dataset.state = state;
+  const label = status.querySelector('span');
+  if (label) label.textContent = message;
+}
+
+function setEditorBusy(isBusy) {
+  const panel = document.getElementById('template-customizer');
+  if (!panel) return;
+  panel.classList.toggle('is-loading', isBusy);
+  panel.setAttribute('aria-busy', String(isBusy));
+  const badge = document.getElementById('editor-ready-badge');
+  if (badge) badge.textContent = isBusy ? 'Working…' : 'Ready to edit';
+  panel.querySelectorAll('input, select, button').forEach((control) => {
+    control.disabled = isBusy;
+  });
+}
+
+function showEditorPanel(visible) {
+  const panel = document.getElementById('template-customizer');
+  if (!panel) return;
+  panel.style.display = visible ? 'block' : 'none';
+}
+
+function drawImageContain(ctx, image) {
+  const scale = Math.min(EDITOR_WIDTH / image.naturalWidth, EDITOR_HEIGHT / image.naturalHeight);
   const width = image.naturalWidth * scale;
   const height = image.naturalHeight * scale;
   ctx.drawImage(image, (EDITOR_WIDTH - width) / 2, (EDITOR_HEIGHT - height) / 2, width, height);
@@ -97,7 +175,7 @@ function drawEditor() {
 
   ctx.fillStyle = '#f7f1e9';
   ctx.fillRect(0, 0, EDITOR_WIDTH, EDITOR_HEIGHT);
-  drawImageCover(ctx, editorState.backgroundImage);
+  drawImageContain(ctx, editorState.backgroundImage);
   const tint = { warm: 'rgba(238,128,88,.13)', bright: 'rgba(255,245,204,.1)', cool: 'rgba(47,116,153,.15)' }[selectedTint];
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, EDITOR_WIDTH, EDITOR_HEIGHT);
@@ -134,11 +212,16 @@ function drawEditor() {
 function loadEditorBackground(imageUrl, { resetLayers = false } = {}) {
   const canvas = document.getElementById('image-editor-canvas');
   const empty = document.getElementById('image-empty');
+  const loadSequence = ++editorLoadSequence;
   if (!imageUrl) {
     editorState.backgroundImage = null;
     editorState.layers = [];
+    editorState.selectedId = null;
     canvas.style.display = 'none';
     empty.style.display = 'grid';
+    showEditorPanel(false);
+    setEditorBusy(false);
+    setEditorStatus('empty', 'Select a look to start');
     return Promise.resolve();
   }
 
@@ -146,14 +229,32 @@ function loadEditorBackground(imageUrl, { resetLayers = false } = {}) {
   image.crossOrigin = 'anonymous';
   return new Promise((resolve, reject) => {
     image.onload = () => {
+      if (loadSequence !== editorLoadSequence) {
+        resolve(false);
+        return;
+      }
       editorState.backgroundImage = image;
       if (resetLayers) resetEditorLayers();
       canvas.style.display = 'block';
       empty.style.display = 'none';
       drawEditor();
+      setEditorStatus('ready', 'Ready to edit');
+      setEditorBusy(false);
       resolve();
     };
-    image.onerror = reject;
+    image.onerror = () => {
+      if (loadSequence !== editorLoadSequence) {
+        resolve(false);
+        return;
+      }
+      editorState.backgroundImage = null;
+      canvas.style.display = 'none';
+      empty.style.display = 'grid';
+      showEditorPanel(false);
+      setEditorBusy(false);
+      setEditorStatus('error', 'Could not load this artwork');
+      reject(new Error('Could not load this artwork.'));
+    };
     image.src = imageUrl;
   });
 }
@@ -198,6 +299,8 @@ function render(data) {
   document.getElementById('share-link').value = data.event.shareUrl;
   const previewLink = document.getElementById('public-preview-link');
   previewLink.href = data.event.shareUrl;
+  const shareOpenButton = document.getElementById('share-open-btn');
+  if (shareOpenButton) shareOpenButton.href = data.event.shareUrl;
 
   document.getElementById('edit-name').value = data.event.name;
   const editDate = document.getElementById('edit-date');
@@ -205,12 +308,19 @@ function render(data) {
   editDate.value = toLocalInputValue(data.event.event_date);
   document.getElementById('edit-location').value = data.event.location || '';
   document.getElementById('edit-description').value = data.event.description || '';
+  setStudioStage(data.event.imageUrl ? 'share' : 'choose');
 
   editorState.layers = [];
   editorState.selectedId = null;
-  loadEditorBackground(data.event.imageUrl ? `${data.event.imageUrl}?t=${Date.now()}` : null).catch(() => {
+  showEditorPanel(false);
+  setEditorBusy(true);
+  setEditorStatus(data.event.imageUrl ? 'loading' : 'empty', data.event.imageUrl ? 'Loading your invitation…' : 'Select a look to start');
+  loadEditorBackground(data.event.imageUrl ? `${data.event.imageUrl}?t=${Date.now()}` : null, { resetLayers: true }).then((loaded) => {
+    if (loaded !== false && editorState.backgroundImage) showEditorPanel(true);
+  }).catch(() => {
     document.getElementById('image-editor-canvas').style.display = 'none';
     document.getElementById('image-empty').style.display = 'grid';
+    showEditorPanel(false);
   });
 
   const mode = data.event.invite_mode || 'open';
@@ -368,18 +478,24 @@ function renderTemplateGrid() {
     grid.querySelectorAll('.template-thumb').forEach((btn) => {
       btn.addEventListener('click', async () => {
         selectedTemplate = templates.find((template) => template.id === btn.dataset.id);
+        setStudioStage('personalize');
+        const errorBox = document.getElementById('image-error');
+        errorBox.style.display = 'none';
         grid.querySelectorAll('.template-thumb').forEach((item) => item.classList.toggle('selected', item === btn));
         const sourceNote = document.getElementById('template-source-note');
         if (sourceNote && selectedTemplate.sourceUrl) {
           sourceNote.innerHTML = `Artwork: <a href="${escapeHtml(selectedTemplate.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(selectedTemplate.sourceName || 'FreeSVG.org · Public Domain')}</a>.`;
         }
-        document.getElementById('template-customizer').style.display = 'block';
+        showEditorPanel(false);
+        setEditorBusy(true);
+        setEditorStatus('loading', 'Loading this look…');
         selectedTint = 'warm';
         document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item.dataset.tint === selectedTint));
         try {
           await loadEditorBackground(selectedTemplate.previewUrl, { resetLayers: true });
+          showEditorPanel(true);
         } catch {
-          const errorBox = document.getElementById('image-error');
+          setStudioStage('choose');
           errorBox.textContent = 'Could not load this background.';
           errorBox.style.display = 'block';
           return;
@@ -401,7 +517,8 @@ async function useOriginalTemplate() {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not set template.');
-    loadDashboard();
+    await loadDashboard();
+    setStudioStage('share', { scroll: true });
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.style.display = 'block';
@@ -412,6 +529,8 @@ async function saveCustomizedTemplate() {
   const errorBox = document.getElementById('image-error');
   if (!editorState.backgroundImage) return;
   errorBox.style.display = 'none';
+  setEditorBusy(true);
+  setEditorStatus('saving', 'Saving your invitation…');
   try {
     const canvas = document.getElementById('image-editor-canvas');
     const selectedId = editorState.selectedId;
@@ -428,9 +547,13 @@ async function saveCustomizedTemplate() {
     if (!res.ok) throw new Error(data.error || 'Could not save this variation.');
     editorState.layers = [];
     editorState.selectedId = null;
-    loadDashboard();
+    await loadDashboard();
+    setStudioStage('share', { scroll: true });
   } catch (err) {
-    errorBox.textContent = err.message; errorBox.style.display = 'block';
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+    setEditorBusy(false);
+    setEditorStatus('error', 'Save failed — try again');
   }
 }
 
@@ -439,6 +562,9 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
   if (!file) return;
   const errorBox = document.getElementById('image-error');
   errorBox.style.display = 'none';
+  showEditorPanel(false);
+  setEditorBusy(true);
+  setEditorStatus('loading', 'Uploading your artwork…');
 
   const formData = new FormData();
   formData.append('image', file);
@@ -449,16 +575,20 @@ document.getElementById('image-upload').addEventListener('change', async (e) => 
     if (!res.ok) throw new Error(data.error || 'Upload failed.');
     selectedTemplate = null;
     selectedTint = 'warm';
-    document.getElementById('template-customizer').style.display = 'block';
+    setStudioStage('personalize');
     document.querySelectorAll('.template-thumb').forEach((item) => item.classList.remove('selected'));
     document.querySelectorAll('.tint-btn').forEach((item) => item.classList.toggle('selected', item.dataset.tint === selectedTint));
     const localUrl = URL.createObjectURL(file);
     await loadEditorBackground(localUrl, { resetLayers: true });
+    showEditorPanel(true);
     document.getElementById('template-customizer').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     setTimeout(() => URL.revokeObjectURL(localUrl), 30000);
   } catch (err) {
+    setStudioStage('choose');
     errorBox.textContent = err.message;
     errorBox.style.display = 'block';
+    setEditorBusy(false);
+    setEditorStatus('error', 'Upload failed — try again');
   } finally {
     e.target.value = '';
   }
@@ -574,6 +704,21 @@ document.querySelectorAll('.filter-chip').forEach((button) => {
 document.getElementById('template-search').addEventListener('input', renderTemplateGrid);
 document.getElementById('use-original-template').addEventListener('click', useOriginalTemplate);
 document.getElementById('save-custom-template').addEventListener('click', saveCustomizedTemplate);
+
+async function copyInvitationLink(button) {
+  const input = document.getElementById('share-link');
+  if (!input.value) return;
+  try {
+    await navigator.clipboard.writeText(input.value);
+    const original = button.textContent;
+    button.textContent = 'Copied!';
+    setTimeout(() => (button.textContent = original), 1500);
+  } catch (err) {
+    input.select();
+  }
+}
+
+document.getElementById('share-copy-btn').addEventListener('click', (event) => copyInvitationLink(event.currentTarget));
 
 document.getElementById('edit-event-form').addEventListener('submit', async (e) => {
   e.preventDefault();

@@ -17,6 +17,11 @@
       <div><span class="section-kicker">Invitation studio</span><h1 id="event-title">Loading…</h1><div class="studio-subtitle">A living invitation for your people.</div></div>
       <div class="studio-top-actions"><button class="btn btn-ghost btn-small" id="refresh-btn">Refresh</button><button class="btn btn-primary btn-small" id="copy-link-btn">Copy invite link</button></div>
     </div>
+    <nav class="studio-steps" aria-label="Invitation workflow">
+      <button type="button" class="studio-step active" data-studio-stage="choose" aria-current="step"><span>01</span><span class="studio-step-copy"><strong>Choose a look</strong><small>Start with a template or your own artwork</small></span></button>
+      <button type="button" class="studio-step" data-studio-stage="personalize"><span>02</span><span class="studio-step-copy"><strong>Personalize</strong><small>Edit the words and position them on the art</small></span></button>
+      <button type="button" class="studio-step" data-studio-stage="share"><span>03</span><span class="studio-step-copy"><strong>Share</strong><small>Save your invitation, then send the link</small></span></button>
+    </nav>
 
     <div id="not-found" class="card" style="display:none;">
       <p>This event doesn't exist, or isn't yours.</p>
@@ -28,34 +33,41 @@
       <div class="studio-layout">
         <main class="studio-main">
           <section class="studio-canvas-card">
-            <div class="canvas-toolbar"><div><span class="section-kicker">Live canvas</span><strong>What your guests will feel</strong></div><span class="canvas-live"><i></i> Live preview</span></div>
+             <div class="canvas-toolbar"><div><span class="section-kicker">Invitation preview</span><strong>What your guests will see</strong></div><span class="canvas-live" id="editor-status" data-state="empty"><i></i><span>Select a look to start</span></span></div>
             <div class="invitation-stage" id="image-preview-wrap">
               <canvas id="image-editor-canvas" width="1200" height="630" style="display:none;" aria-label="Invitation preview"></canvas>
               <div class="invitation-stage-empty" id="image-empty"><span class="empty-art">✦</span><strong>Your invitation starts here.</strong><small>Pick a look from the studio shelf.</small></div>
             </div>
-            <div class="canvas-caption"><span>Preview updates as you shape the details.</span><a id="public-preview-link" href="#" target="_blank" rel="noopener">View guest page ↗</a></div>
+             <div class="canvas-caption"><span id="canvas-help">Your complete artwork stays visible inside the frame.</span><a id="public-preview-link" href="#" target="_blank" rel="noopener">View guest page ↗</a></div>
           </section>
 
-          <section class="studio-card lookbook-card">
-            <div class="studio-card-heading"><div><span class="section-kicker">The lookbook</span><h2>Choose a mood</h2><p>Start with a feeling. You can make it yours in one click.</p></div><span class="section-count" id="template-count"></span></div>
+           <section id="template-customizer" class="studio-card editor-card" style="display:none;" aria-live="polite">
+             <div class="studio-card-heading"><div><span class="section-kicker">Step 2 · Personalize</span><h2>Make it yours</h2><p>Update the essentials, then drag any line directly on the invitation.</p></div><span class="editor-ready-badge" id="editor-ready-badge">Ready to edit</span></div>
+             <div class="layer-fields">
+               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="title" checked /><span>Title</span></label><input type="text" id="layer-title" maxlength="100" placeholder="Event title" /></div>
+               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="date" checked /><span>Date</span></label><input type="text" id="layer-date" maxlength="60" placeholder="Date" /></div>
+               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="time" checked /><span>Time</span></label><input type="text" id="layer-time" maxlength="40" placeholder="Time" /></div>
+               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="location" checked /><span>Location</span></label><input type="text" id="layer-location" maxlength="120" placeholder="Location" /></div>
+             </div>
+             <div class="layer-style-row"><label for="layer-style">Text style</label><select id="layer-style"><option value="editorial">Editorial</option><option value="modern">Modern</option><option value="playful">Playful</option></select><label for="layer-color">Color</label><input id="layer-color" type="color" value="#2f2238" title="Text color" /><span class="layer-drag-hint">Tip: drag a line on the preview to move it.</span></div>
+             <div class="customizer-actions"><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button><button type="button" class="btn btn-ghost btn-small" id="reset-layers">Reset text</button><button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original art</button><button type="button" class="btn btn-primary btn-small" id="save-custom-template">Save invitation</button></div>
+             <div class="hint">Saving creates the guest-ready invitation image and keeps your original event details unchanged.</div>
+             <div class="error-msg" id="image-error"></div>
+           </section>
+
+           <section id="lookbook-section" class="studio-card lookbook-card">
+             <div class="studio-card-heading"><div><span class="section-kicker">Step 1 · Choose a look</span><h2>Find your starting point</h2><p>Browse the collection, or upload artwork you already love.</p></div><span class="section-count" id="template-count"></span></div>
             <div class="lookbook-tools"><div class="template-filters" role="tablist" aria-label="Template filters"><button class="filter-chip active" type="button" data-filter="all">All looks</button><button class="filter-chip" type="button" data-filter="celebration">Celebrations</button><button class="filter-chip" type="button" data-filter="gathering">Gatherings</button><button class="filter-chip" type="button" data-filter="statement">Statement</button></div><input class="template-search" id="template-search" type="search" placeholder="Search the lookbook" aria-label="Search templates" /></div>
              <div class="template-grid" id="template-grid"><div class="empty-note">Loading templates…</div></div>
              <div class="template-source-note" id="template-source-note">Artwork sourced from <a href="https://freesvg.org/" target="_blank" rel="noopener">FreeSVG.org</a> and marked Public Domain.</div>
-            <div id="template-customizer" class="customizer-bar" style="display:none;">
-               <div class="layer-editor-intro"><div><strong>Add the essentials</strong><span>Edit the words, then drag them on the invite.</span></div><button type="button" class="btn btn-ghost btn-small" id="reset-layers">Reset text</button></div>
-               <div class="layer-fields">
-                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="title" checked /><span>Title</span></label><input type="text" id="layer-title" maxlength="100" placeholder="Event title" /></div>
-                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="date" checked /><span>Date</span></label><input type="text" id="layer-date" maxlength="60" placeholder="Date" /></div>
-                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="time" checked /><span>Time</span></label><input type="text" id="layer-time" maxlength="40" placeholder="Time" /></div>
-                 <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="location" checked /><span>Location</span></label><input type="text" id="layer-location" maxlength="120" placeholder="Location" /></div>
-               </div>
-               <div class="layer-style-row"><label for="layer-style">Text style</label><select id="layer-style"><option value="editorial">Editorial</option><option value="modern">Modern</option><option value="playful">Playful</option></select><label for="layer-color">Color</label><input id="layer-color" type="color" value="#2f2238" title="Text color" /><span class="layer-drag-hint">Click and drag text on the preview.</span></div>
-               <div class="customizer-actions"><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button><button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original</button><button type="button" class="btn btn-primary btn-small" id="save-custom-template">Use this variation</button></div>
-               <div class="hint">Your variation is rendered in the browser and saved through the existing image upload.</div>
-            </div>
-            <div class="upload-row"><label for="image-upload">Or bring your own artwork <span>JPEG, PNG, or WebP · 4MB max</span></label><input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" /></div>
-            <div class="error-msg" id="image-error"></div>
+             <div class="upload-row"><label for="image-upload">Upload your own artwork <span>JPEG, PNG, or WebP · 4MB max</span></label><input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" /></div>
           </section>
+
+           <section id="share-panel" class="studio-card share-panel">
+             <div class="studio-card-heading"><div><span class="section-kicker">Step 3 · Share</span><h2>Send it into the world</h2><p>Your invitation is saved. Copy the link or open the guest view to make sure everything feels right.</p></div><span class="share-ready-badge" id="share-ready-badge">Not saved yet</span></div>
+             <div class="share-panel-actions"><button type="button" class="btn btn-primary btn-small" id="share-copy-btn">Copy invite link</button><a class="btn btn-ghost btn-small" id="share-open-btn" href="#" target="_blank" rel="noopener">Open guest view ↗</a></div>
+             <div class="share-panel-note" id="share-panel-note">Choose a look and save your invitation to unlock sharing.</div>
+           </section>
         </main>
 
         <aside class="studio-inspector">

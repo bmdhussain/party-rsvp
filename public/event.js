@@ -26,7 +26,20 @@ async function loadEvent() {
     if (event.imageUrl) {
       document.getElementById('plain-hero-wrap').style.display = 'none';
       document.getElementById('banner-wrap').style.display = 'block';
-      document.getElementById('banner-img').src = event.imageUrl;
+      const bannerImg = document.getElementById('banner-img');
+      const bannerWrap = document.getElementById('banner-wrap');
+      const plainHeroWrap = document.getElementById('plain-hero-wrap');
+      const showPlainHero = () => {
+        bannerWrap.style.display = 'none';
+        plainHeroWrap.style.display = 'block';
+        document.getElementById('event-name').textContent = event.name;
+        document.getElementById('event-desc').textContent = event.description || '';
+        document.getElementById('event-date').textContent = dateText;
+        if (event.location) document.getElementById('event-location').textContent = event.location;
+      };
+      bannerImg.alt = `Invitation artwork for ${event.name}`;
+      bannerImg.onerror = showPlainHero;
+      bannerImg.src = event.imageUrl;
       document.getElementById('banner-name').textContent = event.name;
       document.getElementById('banner-date').textContent = dateText || '';
       document.getElementById('banner-location').textContent = event.location || '';
