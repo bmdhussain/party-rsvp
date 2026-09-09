@@ -46,4 +46,4 @@ outputType = "webview"
 [userenv.shared]
 BREVO_REPLY_TO = "organizer@rsvpfor.com"
 BREVO_SENDER_EMAIL = "organizer@rsvpfor.com"
-BREVO_SENDER_NAME = "JustRSVP"
+BREVO_SENDER_NAME = "RSVPfor"

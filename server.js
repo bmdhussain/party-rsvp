@@ -25,7 +25,7 @@ const upload = multer({
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const BREVO_SENDER = {
-  name: process.env.BREVO_SENDER_NAME || 'JustRSVP',
+  name: process.env.BREVO_SENDER_NAME || 'RSVPfor',
   email: process.env.BREVO_SENDER_EMAIL || 'organizer@rsvpfor.com',
 };
 const BREVO_REPLY_TO = process.env.BREVO_REPLY_TO || BREVO_SENDER.email;
@@ -142,7 +142,7 @@ async function sendBrevoEmail({ to, subject, intro, event }) {
       htmlContent: `
         <div style="margin:0;background:#f5eee8;padding:32px 16px;font-family:Arial,sans-serif;color:#2f2237;">
           <div style="max-width:560px;margin:0 auto;background:#fffaf5;border-radius:22px;padding:36px 30px;box-shadow:0 12px 34px rgba(47,34,55,.12);">
-            <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a66b43;font-weight:700;">PARTY RSVP</div>
+            <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#a66b43;font-weight:700;">RSVP<span style="font-style:italic;font-weight:600;letter-spacing:0;text-transform:none;">for</span></div>
             <h1 style="font-family:Georgia,serif;font-size:34px;line-height:1.05;margin:14px 0 18px;color:#2f2237;">${escapeEmailHtml(event.name)}</h1>
             <p style="font-size:16px;line-height:1.65;margin:0 0 22px;">${escapeEmailHtml(intro)}</p>
             <div style="border-top:1px solid #eadfd7;border-bottom:1px solid #eadfd7;padding:16px 0;margin-bottom:24px;font-size:14px;line-height:1.8;">
@@ -651,7 +651,7 @@ app.use((err, req, res, next) => {
 init()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🎉 Party RSVP running at http://localhost:${PORT}`);
+      console.log(`🎉 RSVPfor running at http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
