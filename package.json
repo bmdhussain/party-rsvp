@@ -8,6 +8,7 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@replit/connectors-sdk": "^0.4.3",
     "connect-pg-simple": "^9.0.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

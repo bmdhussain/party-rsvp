@@ -359,44 +359,47 @@ function render(data) {
     .join('');
 }
 
-function eventEmailDetails(event) {
-  const details = [
-    `Event: ${event.name}`,
-    event.event_date ? `When: ${formatWhen(event.event_date)}` : '',
-    event.location ? `Where: ${event.location}` : '',
-  ].filter(Boolean);
-  return details.join('\n');
+function setEmailStatus(message, type = 'success') {
+  const status = document.getElementById('email-status');
+  if (!status) return;
+  status.textContent = message;
+  status.className = `email-status ${type}`;
+  status.style.display = 'block';
 }
 
-function composeGuestEmail({ emails, subject, intro, event = lastData?.event }) {
-  const uniqueEmails = [...new Set((emails || []).map((email) => String(email).trim().toLowerCase()).filter(Boolean))];
-  if (!uniqueEmails.length) {
-    window.alert('No guest emails to send to yet.');
-    return;
-  }
-  if (!event?.shareUrl) {
-    window.alert('The event link is not ready yet. Refresh and try again.');
+async function composeGuestEmail({ recipientMode, subject, intro, button }) {
+  if (!lastData?.event?.shareUrl) {
+    setEmailStatus('The event link is not ready yet. Refresh and try again.', 'error');
     return;
   }
 
-  const body = [
-    'PARTY RSVP',
-    '',
-    intro,
-    '',
-    eventEmailDetails(event),
-    event.description ? `\n${event.description}` : '',
-    '',
-    `Open the event page: ${event.shareUrl}`,
-    '',
-    'You can RSVP, check the latest details, and leave a note there.',
-    '',
-    'Made with Party RSVP — make room for good news.',
-  ].filter(Boolean).join('\n');
+  const originalLabel = button?.textContent || 'Send email';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Sending…';
+  }
+  setEmailStatus('Sending through Brevo…', 'pending');
 
-  const bcc = encodeURIComponent(uniqueEmails.join(','));
-  const encodedSubject = encodeURIComponent(subject);
-  window.location.href = `mailto:?bcc=${bcc}&subject=${encodedSubject}&body=${encodeURIComponent(body)}`;
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipientMode, subject, intro }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Brevo could not send this email.');
+    const summary = data.failed
+      ? `Sent to ${data.sent} guests; ${data.failed} could not be sent.`
+      : `Sent to ${data.sent} guest${data.sent === 1 ? '' : 's'} through Brevo.`;
+    setEmailStatus(summary, data.failed ? 'warning' : 'success');
+  } catch (err) {
+    setEmailStatus(err.message, 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
@@ -415,20 +418,20 @@ document.getElementById('copy-link-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('email-attending-btn').addEventListener('click', () => {
-  if (!lastData) return;
   composeGuestEmail({
-    emails: lastData.rsvps.filter((r) => r.attending).map((r) => r.email),
+    recipientMode: 'attending',
     subject: `You're on the guest list — ${lastData.event.name}`,
     intro: `Hi! We’re excited to see you at ${lastData.event.name}. Here’s the invitation with the latest details:`,
+    button: document.getElementById('email-attending-btn'),
   });
 });
 
 document.getElementById('email-all-btn').addEventListener('click', () => {
-  if (!lastData) return;
   composeGuestEmail({
-    emails: lastData.rsvps.map((r) => r.email),
+    recipientMode: 'all_rsvps',
     subject: `A note about ${lastData.event.name}`,
     intro: `Hi! Here’s a quick note about ${lastData.event.name}, along with the invitation and event details:`,
+    button: document.getElementById('email-all-btn'),
   });
 });
 
@@ -757,9 +760,10 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
 document.getElementById('notify-guests-btn').addEventListener('click', () => {
   if (!lastData) return;
   composeGuestEmail({
-    emails: lastData.rsvps.map((r) => r.email),
+    recipientMode: 'all_rsvps',
     subject: `Updated details — ${lastData.event.name}`,
     intro: `Hi! The details for ${lastData.event.name} have been updated. Please use this invitation for the latest information:`,
+    button: document.getElementById('notify-guests-btn'),
   });
 });
 
@@ -805,9 +809,10 @@ async function loadInvites() {
 document.getElementById('email-invites-btn').addEventListener('click', () => {
   if (!lastData) return;
   composeGuestEmail({
-    emails: currentInvites.map((invite) => invite.email),
+    recipientMode: 'restricted',
     subject: `You're invited — ${lastData.event.name}`,
     intro: `Hi! You’re invited to ${lastData.event.name}. We’d love to have you there — please RSVP on the event page:`,
+    button: document.getElementById('email-invites-btn'),
   });
 });
 

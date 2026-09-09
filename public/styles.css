@@ -24,6 +24,11 @@
 .share-ready-badge.is-ready{background:#dff0e4;color:#337151}
 .share-panel-note{margin-top:14px;color:#766d72;font-size:11px}
 .editor-card,.lookbook-card,.share-panel{scroll-margin-top:24px}
+.email-status{display:none;margin:14px 0 0;padding:11px 14px;border-radius:12px;background:#e3f1e6;color:#326d4d;font-size:12px}
+.email-status.pending{display:block;background:#f7ead8;color:#966437}
+.email-status.warning{display:block;background:#fff0d4;color:#8d6727}
+.email-status.error{display:block;background:#f8d9d7;color:#8d3940}
+.pulse-actions .btn:disabled,.inspector-save .btn:disabled,.invite-add-row .btn:disabled{opacity:.6;cursor:wait;transform:none}
 
 /* Guest artwork is a full-bleed fixed viewing area, not an inset card. */
 .invite-banner{width:100vw;height:min(78vh,820px);min-height:320px;max-height:none;margin:0 0 22px calc(50% - 50vw);border-radius:0;box-shadow:none;background:transparent;overflow:hidden}

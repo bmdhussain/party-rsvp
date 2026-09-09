@@ -24,6 +24,11 @@ const upload = multer({
 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const BREVO_SENDER = {
+  name: process.env.BREVO_SENDER_NAME || 'JustRSVP',
+  email: process.env.BREVO_SENDER_EMAIL || 'organizer@rsvpfor.com',
+};
+const BREVO_REPLY_TO = process.env.BREVO_REPLY_TO || BREVO_SENDER.email;
 
 if (!process.env.DATABASE_URL) {
   console.error(
@@ -102,6 +107,68 @@ function makeShareUrl(req, slug) {
 
 function makeImageUrl(req, slug, hasImage) {
   return hasImage ? `${req.protocol}://${req.get('host')}/api/events/${slug}/image` : null;
+}
+
+function escapeEmailHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+async function sendBrevoEmail({ to, subject, intro, event }) {
+  const { ReplitConnectors } = await import('@replit/connectors-sdk');
+  const connectors = new ReplitConnectors();
+  const response = await connectors.proxy('brevo', '/smtp/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sender: BREVO_SENDER,
+      replyTo: { email: BREVO_REPLY_TO },
+      to: [{ email: to.email, name: to.name || undefined }],
+      subject,
+      textContent: [
+        intro,
+        '',
+        `Event: ${event.name}`,
+        event.event_date ? `When: ${new Date(event.event_date).toLocaleString()}` : '',
+        event.location ? `Where: ${event.location}` : '',
+        event.description || '',
+        '',
+        `Open the event page: ${event.shareUrl}`,
+      ].filter(Boolean).join('\n'),
+      htmlContent: `
+        <div style="margin:0;background:#f5eee8;padding:32px 16px;font-family:Arial,sans-serif;color:#2f2237;">
+          <div style="max-width:560px;margin:0 auto;background:#fffaf5;border-radius:22px;padding:36px 30px;box-shadow:0 12px 34px rgba(47,34,55,.12);">
+            <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#a66b43;font-weight:700;">PARTY RSVP</div>
+            <h1 style="font-family:Georgia,serif;font-size:34px;line-height:1.05;margin:14px 0 18px;color:#2f2237;">${escapeEmailHtml(event.name)}</h1>
+            <p style="font-size:16px;line-height:1.65;margin:0 0 22px;">${escapeEmailHtml(intro)}</p>
+            <div style="border-top:1px solid #eadfd7;border-bottom:1px solid #eadfd7;padding:16px 0;margin-bottom:24px;font-size:14px;line-height:1.8;">
+              ${event.event_date ? `<div><strong>When:</strong> ${escapeEmailHtml(new Date(event.event_date).toLocaleString())}</div>` : ''}
+              ${event.location ? `<div><strong>Where:</strong> ${escapeEmailHtml(event.location)}</div>` : ''}
+              ${event.description ? `<div style="margin-top:8px;">${escapeEmailHtml(event.description)}</div>` : ''}
+            </div>
+            <a href="${escapeEmailHtml(event.shareUrl)}" style="display:inline-block;background:#2f2237;color:#fff;text-decoration:none;border-radius:10px;padding:13px 18px;font-weight:700;">Open invitation</a>
+            <p style="font-size:12px;line-height:1.5;color:#76677c;margin:24px 0 0;">You can RSVP, check the latest details, and leave a note on the event page.</p>
+          </div>
+        </div>`,
+    }),
+  });
+
+  const rawBody = await response.text();
+  let body = {};
+  try {
+    body = rawBody ? JSON.parse(rawBody) : {};
+  } catch {
+    body = {};
+  }
+  if (!response.ok) {
+    const providerMessage = body.message || body.code || 'Brevo could not send this email.';
+    throw new Error(providerMessage);
+  }
+  return body;
 }
 
 // --- Auth ---
@@ -297,6 +364,80 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
     },
     rsvps,
     totals,
+  });
+});
+
+app.post('/api/events/:eventId/email', requireAuth, verifySameOrigin, async (req, res) => {
+  const recipientMode = req.body?.recipientMode;
+  const recipientQueries = {
+    all_rsvps: {
+      sql: `SELECT lower(email) AS email, max(name) AS name
+            FROM rsvps WHERE event_id = $1 GROUP BY lower(email) LIMIT 500`,
+      label: 'RSVP guests',
+    },
+    attending: {
+      sql: `SELECT lower(email) AS email, max(name) AS name
+            FROM rsvps WHERE event_id = $1 AND attending = true
+            GROUP BY lower(email) LIMIT 500`,
+      label: 'attending guests',
+    },
+    restricted: {
+      sql: `SELECT i.email, max(r.name) AS name
+            FROM event_invites i
+            LEFT JOIN rsvps r ON r.event_id = i.event_id AND lower(r.email) = i.email
+            WHERE i.event_id = $1 GROUP BY i.email LIMIT 500`,
+      label: 'the guest list',
+    },
+  };
+  const recipientQuery = recipientQueries[recipientMode];
+  if (!recipientQuery) return res.status(400).json({ error: 'Invalid recipient group.' });
+
+  const { rows: eventRows } = await pool.query(
+    `SELECT id, slug, name, event_date, location, description
+     FROM events WHERE id = $1 AND owner_id = $2`,
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const { rows: recipients } = await pool.query(recipientQuery.sql, [req.params.eventId]);
+  if (!recipients.length) {
+    return res.status(400).json({ error: `There are no ${recipientQuery.label} to email yet.` });
+  }
+
+  const event = {
+    ...eventRows[0],
+    shareUrl: makeShareUrl(req, eventRows[0].slug),
+  };
+  const subject =
+    typeof req.body?.subject === 'string' && req.body.subject.trim()
+      ? req.body.subject.trim().slice(0, 180)
+      : `You're invited — ${event.name}`;
+  const intro =
+    typeof req.body?.intro === 'string' && req.body.intro.trim()
+      ? req.body.intro.trim().slice(0, 1000)
+      : `You're invited to ${event.name}. We would love to have you there.`;
+
+  const results = [];
+  for (let index = 0; index < recipients.length; index += 20) {
+    const batch = recipients.slice(index, index + 20);
+    results.push(
+      ...(await Promise.allSettled(
+        batch.map((recipient) =>
+          sendBrevoEmail({ to: recipient, subject, intro, event })
+        )
+      ))
+    );
+  }
+
+  const sent = results.filter((result) => result.status === 'fulfilled').length;
+  const failed = results.length - sent;
+  const firstFailure = results.find((result) => result.status === 'rejected');
+  const status = failed ? (sent ? 207 : 502) : 200;
+  res.status(status).json({
+    ok: sent > 0,
+    sent,
+    failed,
+    ...(firstFailure ? { error: firstFailure.reason?.message || 'Some emails could not be sent.' } : {}),
   });
 });
 
