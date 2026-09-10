@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Ticket</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+</head>
+<body>
+  <div class="wrap narrow">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
+      <nav class="header-nav"><a href="/" class="btn btn-ghost btn-small">Host an event</a></nav>
+    </header>
+
+    <div id="ticket-loading" class="empty-note">Loading your ticket…</div>
+
+    <div id="ticket-missing" class="card" style="display:none;">
+      <h2>We couldn't find that ticket</h2>
+      <p class="hint">The link may be incomplete, or the event may have been removed. Try the link from your confirmation email again.</p>
+    </div>
+
+    <section class="ticket-card" id="ticket-card" style="display:none;">
+      <div class="ticket-top">
+        <div class="ticket-eyebrow" id="ticket-status-label">Admit one</div>
+        <h1 id="ticket-event-name"></h1>
+        <div class="ticket-meta">
+          <div class="meta" id="ticket-date"></div>
+          <div class="meta" id="ticket-location"></div>
+        </div>
+      </div>
+
+      <div class="ticket-perforation" aria-hidden="true"><span></span></div>
+
+      <div class="ticket-bottom">
+        <div class="ticket-guest">
+          <div class="ticket-field"><small>Guest</small><strong id="ticket-guest-name"></strong></div>
+          <div class="ticket-field"><small>Party</small><strong id="ticket-party"></strong></div>
+        </div>
+        <div class="ticket-qr" id="ticket-qr-wrap">
+          <canvas id="ticket-qr" aria-label="Your check-in code"></canvas>
+          <small>Show this at the door</small>
+        </div>
+      </div>
+
+      <div class="ticket-banner" id="ticket-banner" style="display:none;"></div>
+
+      <div class="ticket-actions">
+        <a class="btn btn-primary btn-small" id="ticket-calendar" href="#">Add to calendar</a>
+        <a class="btn btn-ghost btn-small" id="ticket-event-link" href="#">Event details</a>
+      </div>
+    </section>
+
+    <footer class="site-footer"><span>Keep this link — it's your ticket.</span><span class="footer-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></footer>
+  </div>
+
+  <script src="/ticket.js"></script>
+</body>
+</html>

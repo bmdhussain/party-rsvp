@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Door Check-in</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+</head>
+<body>
+  <div class="wrap narrow checkin-page">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
+      <div class="header-nav"><a class="btn btn-ghost btn-small" id="back-to-studio" href="#">← Studio</a></div>
+    </header>
+
+    <div class="checkin-topline">
+      <div><span class="section-kicker">At the door</span><h1 id="checkin-event-name">Loading…</h1></div>
+      <div class="checkin-counter"><strong id="checkin-count">0</strong><span>of <span id="checkin-total">0</span> arrived</span></div>
+    </div>
+
+    <section class="card checkin-scanner">
+      <div class="scanner-stage" id="scanner-stage">
+        <video id="scanner-video" playsinline muted></video>
+        <div class="scanner-frame" aria-hidden="true"></div>
+        <div class="scanner-placeholder" id="scanner-placeholder">
+          <strong>Camera off</strong>
+          <small>Start the camera to scan tickets, or type a code below.</small>
+        </div>
+      </div>
+      <canvas id="scanner-canvas" hidden></canvas>
+      <div class="scanner-actions">
+        <button type="button" class="btn btn-primary btn-small" id="start-camera">Start camera</button>
+        <button type="button" class="btn btn-ghost btn-small" id="stop-camera" style="display:none;">Stop camera</button>
+        <span class="scanner-hint" id="scanner-hint"></span>
+      </div>
+    </section>
+
+    <section class="card checkin-manual">
+      <label for="manual-token">Or enter a ticket code by hand</label>
+      <div class="manual-row">
+        <input type="text" id="manual-token" autocomplete="off" spellcheck="false" placeholder="Paste or type the code from the ticket" />
+        <button type="button" class="btn btn-primary btn-small" id="manual-submit">Check in</button>
+      </div>
+      <div class="hint">Useful if a guest's phone is dead — the code is printed under the QR on their ticket.</div>
+    </section>
+
+    <div class="checkin-result" id="checkin-result" role="status" aria-live="polite"></div>
+
+    <section class="card checkin-log-card">
+      <div class="guest-list-heading"><h3>Recent arrivals</h3><span id="log-count"></span></div>
+      <div id="checkin-log" class="checkin-log"><div class="empty-note">Nobody scanned yet.</div></div>
+    </section>
+
+    <footer class="site-footer"><span>Private host view</span><a href="/dashboard">Back to dashboard</a></footer>
+  </div>
+
+  <script src="/checkin.js"></script>
+</body>
+</html>

@@ -11,6 +11,15 @@ const { pool, init } = require('./lib/db');
 const { passport, providers } = require('./lib/auth');
 const { TEMPLATES, findTemplate } = require('./lib/templates');
 const { parseCapacity, confirmedHeadcount, promoteFromWaitlist } = require('./lib/capacity');
+const { buildEventIcs, icsFilename } = require('./lib/ics');
+const {
+  CATEGORIES,
+  normalizeVisibility,
+  normalizeCategory,
+  normalizeHandle,
+  buildBrowseQuery,
+} = require('./lib/discovery');
+const { toCsv, csvFilename } = require('./lib/csv');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -108,6 +117,12 @@ function makeShareUrl(req, slug) {
 
 function makeImageUrl(req, slug, hasImage) {
   return hasImage ? `${req.protocol}://${req.get('host')}/api/events/${slug}/image` : null;
+}
+
+// 122 bits of randomness, hex, no dashes — short enough to sit in a QR code
+// comfortably and unguessable enough to be the only thing protecting a ticket.
+function newTicketToken() {
+  return crypto.randomUUID().replace(/-/g, '');
 }
 
 function escapeEmailHtml(value) {
@@ -239,6 +254,150 @@ app.get('/api/templates', (req, res) => {
   );
 });
 
+app.get('/api/categories', (req, res) => res.json(CATEGORIES));
+
+// --- Public discovery ---
+
+app.get('/api/browse', async (req, res) => {
+  const { sql, params } = buildBrowseQuery({
+    q: req.query.q,
+    category: req.query.category,
+    limit: req.query.limit,
+    offset: req.query.offset,
+  });
+  const { rows } = await pool.query(sql, params);
+  res.json(
+    rows.map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      event_date: r.event_date,
+      location: r.location,
+      category: r.category,
+      going: r.going,
+      spotsLeft: r.capacity === null ? null : Math.max(0, r.capacity - r.going),
+      isFull: r.capacity !== null && r.going >= r.capacity,
+      hostName: r.host_name,
+      hostHandle: r.host_handle,
+      shareUrl: makeShareUrl(req, r.slug),
+      imageUrl: makeImageUrl(req, r.slug, r.has_image),
+    }))
+  );
+});
+
+// A host profile exists publicly only if they claimed a handle AND switched the
+// profile on. Their unlisted events never appear here.
+app.get('/api/hosts/:handle', async (req, res) => {
+  const handle = normalizeHandle(req.params.handle);
+  if (!handle) return res.status(404).json({ error: 'Host not found.' });
+
+  const { rows: hostRows } = await pool.query(
+    `SELECT id, name, handle, bio, avatar_url, created_at FROM users
+     WHERE lower(handle) = $1 AND public_profile = true`,
+    [handle]
+  );
+  if (!hostRows[0]) return res.status(404).json({ error: 'Host not found.' });
+  const host = hostRows[0];
+
+  const { rows: events } = await pool.query(
+    `SELECT e.slug, e.name, e.event_date, e.location, e.category, e.capacity,
+            (e.image_data IS NOT NULL OR e.template_id IS NOT NULL) AS has_image,
+            COALESCE(SUM(CASE WHEN r.status = 'confirmed' THEN r.adults + r.kids END), 0)::int AS going
+     FROM events e
+     LEFT JOIN rsvps r ON r.event_id = e.id
+     WHERE e.owner_id = $1 AND e.visibility = 'public'
+     GROUP BY e.id, e.slug, e.name, e.event_date, e.location, e.category, e.capacity,
+              e.image_data, e.template_id
+     ORDER BY e.event_date DESC NULLS LAST`,
+    [host.id]
+  );
+
+  const now = Date.now();
+  const shape = (e) => ({
+    slug: e.slug,
+    name: e.name,
+    event_date: e.event_date,
+    location: e.location,
+    category: e.category,
+    going: e.going,
+    shareUrl: makeShareUrl(req, e.slug),
+    imageUrl: makeImageUrl(req, e.slug, e.has_image),
+  });
+  const isUpcoming = (e) => e.event_date && new Date(e.event_date).getTime() > now;
+
+  res.json({
+    host: {
+      name: host.name,
+      handle: host.handle,
+      bio: host.bio,
+      avatarUrl: host.avatar_url,
+      hostingSince: host.created_at,
+    },
+    upcoming: events.filter(isUpcoming).sort((a, b) => new Date(a.event_date) - new Date(b.event_date)).map(shape),
+    past: events.filter((e) => !isUpcoming(e)).map(shape),
+  });
+});
+
+// --- Host's own public profile settings ---
+
+app.get('/api/me/profile', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT name, handle, bio, public_profile, avatar_url FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Not found.' });
+  res.json({
+    name: rows[0].name,
+    handle: rows[0].handle,
+    bio: rows[0].bio,
+    publicProfile: rows[0].public_profile,
+    avatarUrl: rows[0].avatar_url,
+    profileUrl: rows[0].handle ? `${req.protocol}://${req.get('host')}/@${rows[0].handle}` : null,
+  });
+});
+
+app.put('/api/me/profile', requireAuth, verifySameOrigin, async (req, res) => {
+  const body = req.body || {};
+  const wantsPublic = body.publicProfile === true;
+
+  let handle = null;
+  if (typeof body.handle === 'string' && body.handle.trim()) {
+    handle = normalizeHandle(body.handle);
+    if (!handle) {
+      return res.status(400).json({
+        error:
+          'Handles are 3–30 characters, lowercase letters, numbers and underscores only, and a few common words are reserved.',
+      });
+    }
+  }
+
+  // A profile with no handle has no URL to live at, so it can't be public.
+  if (wantsPublic && !handle) {
+    return res.status(400).json({ error: 'Choose a handle before making your profile public.' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE users SET handle = $1, bio = $2, public_profile = $3 WHERE id = $4
+       RETURNING handle, bio, public_profile`,
+      [handle, typeof body.bio === 'string' ? body.bio.trim().slice(0, 600) : null, wantsPublic, req.user.id]
+    );
+    res.json({
+      ok: true,
+      handle: rows[0].handle,
+      bio: rows[0].bio,
+      publicProfile: rows[0].public_profile,
+      profileUrl: rows[0].handle ? `${req.protocol}://${req.get('host')}/@${rows[0].handle}` : null,
+    });
+  } catch (err) {
+    // The unique index on lower(handle) is what actually guarantees uniqueness;
+    // checking first would still race.
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'That handle is already taken.' });
+    }
+    throw err;
+  }
+});
+
 app.get('/api/events', requireAuth, async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, slug, name, event_date, location, created_at,
@@ -290,20 +449,29 @@ app.patch('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, res
   const eventDate = date ? new Date(date) : null;
   // An absent `capacity` key leaves the limit alone; an empty one clears it
   // back to unlimited.
-  const hasCapacity = Object.prototype.hasOwnProperty.call(req.body || {}, 'capacity');
+  const body = req.body || {};
+  const hasCapacity = Object.prototype.hasOwnProperty.call(body, 'capacity');
+  const hasVisibility = Object.prototype.hasOwnProperty.call(body, 'visibility');
+  const hasCategory = Object.prototype.hasOwnProperty.call(body, 'category');
 
   const { rows } = await pool.query(
     `UPDATE events SET name = $1, event_date = $2, location = $3, description = $4,
-                       capacity = CASE WHEN $5 THEN $6::int ELSE capacity END
-     WHERE id = $7 AND owner_id = $8
-     RETURNING id, slug, name, event_date, location, description, capacity`,
+                       capacity = CASE WHEN $5 THEN $6::int ELSE capacity END,
+                       visibility = CASE WHEN $7 THEN $8::text ELSE visibility END,
+                       category = CASE WHEN $9 THEN $10::text ELSE category END
+     WHERE id = $11 AND owner_id = $12
+     RETURNING id, slug, name, event_date, location, description, capacity, visibility, category`,
     [
       name.trim().slice(0, 150),
       eventDate && !Number.isNaN(eventDate.getTime()) ? eventDate : null,
       (location || '').trim().slice(0, 300),
       (description || '').trim().slice(0, 1000),
       hasCapacity,
-      hasCapacity ? parseCapacity(req.body.capacity) : null,
+      hasCapacity ? parseCapacity(body.capacity) : null,
+      hasVisibility,
+      hasVisibility ? normalizeVisibility(body.visibility) : null,
+      hasCategory,
+      hasCategory ? normalizeCategory(body.category) : null,
       req.params.eventId,
       req.user.id,
     ]
@@ -371,7 +539,7 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
     `SELECT id, slug, owner_id, name, event_date, location, description, created_at, invite_mode,
-            capacity,
+            capacity, visibility, category,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
      FROM events WHERE id = $1 AND owner_id = $2`,
     [req.params.eventId, req.user.id]
@@ -381,10 +549,12 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   // Waitlisted guests read oldest-first (that's the promotion order); everyone
   // else reads newest-first, as the host list always has.
   const { rows: rsvps } = await pool.query(
-    `SELECT * FROM rsvps WHERE event_id = $1
-     ORDER BY CASE WHEN status = 'waitlist' THEN 0 ELSE 1 END,
-              CASE WHEN status = 'waitlist' THEN created_at END ASC,
-              created_at DESC`,
+    `SELECT r.*, c.checked_in_at FROM rsvps r
+     LEFT JOIN checkins c ON c.rsvp_id = r.id
+     WHERE r.event_id = $1
+     ORDER BY CASE WHEN r.status = 'waitlist' THEN 0 ELSE 1 END,
+              CASE WHEN r.status = 'waitlist' THEN r.created_at END ASC,
+              r.created_at DESC`,
     [req.params.eventId]
   );
 
@@ -394,6 +564,10 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
         acc.adults += r.adults;
         acc.kids += r.kids;
         acc.attendingCount += 1;
+        if (r.checked_in_at) {
+          acc.checkedInCount += 1;
+          acc.checkedInHeads += r.adults + r.kids;
+        }
       } else if (r.status === 'waitlist') {
         acc.waitlistCount += 1;
         acc.waitlistHeads += r.adults + r.kids;
@@ -402,7 +576,16 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
       }
       return acc;
     },
-    { adults: 0, kids: 0, attendingCount: 0, declinedCount: 0, waitlistCount: 0, waitlistHeads: 0 }
+    {
+      adults: 0,
+      kids: 0,
+      attendingCount: 0,
+      declinedCount: 0,
+      waitlistCount: 0,
+      waitlistHeads: 0,
+      checkedInCount: 0,
+      checkedInHeads: 0,
+    }
   );
 
   const capacity = eventRows[0].capacity;
@@ -641,6 +824,208 @@ app.put('/api/events/:eventId/faqs', requireAuth, verifySameOrigin, async (req, 
   res.json({ ok: true, count: cleaned.length });
 });
 
+// --- Analytics & export (host) ---
+
+app.get('/api/events/:eventId/analytics', requireAuth, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id, capacity, event_date FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+  const event = eventRows[0];
+
+  const { rows: trend } = await pool.query(
+    `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day,
+            count(*)::int AS replies,
+            count(*) FILTER (WHERE status = 'confirmed')::int AS confirmed
+     FROM rsvps WHERE event_id = $1
+     GROUP BY 1 ORDER BY 1 ASC`,
+    [req.params.eventId]
+  );
+
+  const { rows: summaryRows } = await pool.query(
+    `SELECT
+       count(*) FILTER (WHERE status = 'confirmed')::int AS confirmed_replies,
+       count(*) FILTER (WHERE status = 'waitlist')::int AS waitlisted,
+       count(*) FILTER (WHERE status = 'declined')::int AS declined,
+       COALESCE(SUM(CASE WHEN status = 'confirmed' THEN adults + kids END), 0)::int AS confirmed_heads
+     FROM rsvps WHERE event_id = $1`,
+    [req.params.eventId]
+  );
+  const summary = summaryRows[0];
+
+  const { rows: checkinRows } = await pool.query(
+    `SELECT count(*)::int AS checked_in,
+            COALESCE(SUM(r.adults + r.kids), 0)::int AS checked_in_heads
+     FROM checkins c JOIN rsvps r ON r.id = c.rsvp_id
+     WHERE c.event_id = $1`,
+    [req.params.eventId]
+  );
+  const checkins = checkinRows[0];
+
+  const replies = summary.confirmed_replies + summary.waitlisted + summary.declined;
+  res.json({
+    trend,
+    summary: {
+      replies,
+      confirmedReplies: summary.confirmed_replies,
+      waitlisted: summary.waitlisted,
+      declined: summary.declined,
+      confirmedHeads: summary.confirmed_heads,
+      // Of the people who replied at all, how many said yes.
+      acceptanceRate: replies ? Math.round((summary.confirmed_replies / replies) * 100) : null,
+    },
+    capacity: {
+      limit: event.capacity,
+      taken: summary.confirmed_heads,
+      spotsLeft: event.capacity === null ? null : Math.max(0, event.capacity - summary.confirmed_heads),
+      fillRate:
+        event.capacity ? Math.min(100, Math.round((summary.confirmed_heads / event.capacity) * 100)) : null,
+    },
+    checkIn: {
+      guests: checkins.checked_in,
+      heads: checkins.checked_in_heads,
+      // Turnout: of the heads that were confirmed, how many actually arrived.
+      rate: summary.confirmed_heads
+        ? Math.round((checkins.checked_in_heads / summary.confirmed_heads) * 100)
+        : null,
+    },
+  });
+});
+
+app.get('/api/events/:eventId/guests.csv', requireAuth, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id, name FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const { rows } = await pool.query(
+    `SELECT r.name, r.email, r.status, r.adults, r.kids, r.comment, r.created_at,
+            c.checked_in_at
+     FROM rsvps r LEFT JOIN checkins c ON c.rsvp_id = r.id
+     WHERE r.event_id = $1
+     ORDER BY r.created_at ASC`,
+    [req.params.eventId]
+  );
+
+  const iso = (v) => (v ? new Date(v).toISOString() : '');
+  const csv = toCsv(
+    [
+      { label: 'Name', value: (r) => r.name },
+      { label: 'Email', value: (r) => r.email },
+      { label: 'Status', value: (r) => r.status },
+      { label: 'Adults', value: (r) => (r.status === 'declined' ? '' : r.adults) },
+      { label: 'Kids', value: (r) => (r.status === 'declined' ? '' : r.kids) },
+      { label: 'Party size', value: (r) => (r.status === 'declined' ? '' : r.adults + r.kids) },
+      { label: 'Message', value: (r) => r.comment },
+      { label: 'Replied at', value: (r) => iso(r.created_at) },
+      { label: 'Checked in at', value: (r) => iso(r.checked_in_at) },
+    ],
+    rows
+  );
+
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${csvFilename(eventRows[0].name, 'guests')}"`);
+  res.send(csv);
+});
+
+// --- Door check-in (host) ---
+
+app.post('/api/events/:eventId/checkin', requireAuth, verifySameOrigin, async (req, res) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+  if (!token) return res.status(400).json({ error: 'No ticket was scanned.' });
+
+  const { rows: eventRows } = await pool.query(
+    'SELECT id, owner_id, name FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  // Scoped to this event, so a valid ticket for a different party is rejected
+  // rather than quietly admitting someone.
+  const { rows: rsvpRows } = await pool.query(
+    `SELECT r.id, r.name, r.email, r.status, r.adults, r.kids, c.checked_in_at
+     FROM rsvps r
+     LEFT JOIN checkins c ON c.rsvp_id = r.id
+     WHERE r.ticket_token = $1 AND r.event_id = $2`,
+    [token, req.params.eventId]
+  );
+  const guest = rsvpRows[0];
+  if (!guest) {
+    return res.status(404).json({ error: "That ticket isn't for this event." });
+  }
+  if (guest.status === 'declined') {
+    return res.status(409).json({ error: `${guest.name} replied that they couldn't make it.`, guest: { name: guest.name } });
+  }
+  if (guest.status === 'waitlist') {
+    return res.status(409).json({
+      error: `${guest.name} is still on the waitlist — raise the guest limit to let them in.`,
+      guest: { name: guest.name },
+    });
+  }
+
+  // How many of this host's events this guest has been confirmed at, including
+  // this one — the number that makes a regular feel recognised at the door.
+  const { rows: visitRows } = await pool.query(
+    `SELECT count(DISTINCT r.event_id)::int AS visits
+     FROM rsvps r JOIN events e ON e.id = r.event_id
+     WHERE e.owner_id = $1 AND lower(r.email) = $2 AND r.status = 'confirmed'`,
+    [req.user.id, normalizeEmail(guest.email)]
+  );
+
+  const payload = {
+    guest: {
+      name: guest.name,
+      party: guest.adults + guest.kids,
+      adults: guest.adults,
+      kids: guest.kids,
+      visits: visitRows[0].visits,
+    },
+  };
+
+  // A second scan is a normal thing to happen at a busy door, so report the
+  // original time rather than treating it as an error.
+  if (guest.checked_in_at) {
+    return res.json({ ...payload, ok: true, already: true, checkedInAt: guest.checked_in_at });
+  }
+
+  const { rows: inserted } = await pool.query(
+    `INSERT INTO checkins (rsvp_id, event_id, checked_in_by) VALUES ($1, $2, $3)
+     ON CONFLICT (rsvp_id) DO NOTHING
+     RETURNING checked_in_at`,
+    [guest.id, req.params.eventId, req.user.id]
+  );
+
+  // Lost the race with another scanner on the door — still a success.
+  if (!inserted[0]) {
+    const { rows: existing } = await pool.query(
+      'SELECT checked_in_at FROM checkins WHERE rsvp_id = $1',
+      [guest.id]
+    );
+    return res.json({ ...payload, ok: true, already: true, checkedInAt: existing[0]?.checked_in_at });
+  }
+
+  res.json({ ...payload, ok: true, already: false, checkedInAt: inserted[0].checked_in_at });
+});
+
+app.post('/api/events/:eventId/checkin/undo', requireAuth, verifySameOrigin, async (req, res) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+  const { rows: eventRows } = await pool.query(
+    'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const { rowCount } = await pool.query(
+    `DELETE FROM checkins WHERE event_id = $1 AND rsvp_id = (
+       SELECT id FROM rsvps WHERE ticket_token = $2 AND event_id = $1
+     )`,
+    [req.params.eventId, token]
+  );
+  res.json({ ok: true, undone: rowCount > 0 });
+});
+
 // --- Public event + RSVP (no auth — anyone with the link) ---
 
 app.get('/api/events/:slug/public', async (req, res) => {
@@ -690,6 +1075,69 @@ app.get('/api/events/:slug/image', async (req, res) => {
     if (template) return res.redirect(`/templates/${template.file}`);
   }
   res.status(404).end();
+});
+
+app.get('/api/events/:slug/calendar.ics', async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT id, slug, name, event_date, location, description FROM events WHERE slug = $1',
+    [req.params.slug]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const ics = buildEventIcs({
+    event: rows[0],
+    url: makeShareUrl(req, rows[0].slug),
+    // Stable per event, so re-adding updates the existing entry in the guest's
+    // calendar instead of creating a duplicate.
+    uid: `${rows[0].id}@rsvpfor`,
+  });
+  if (!ics) {
+    return res.status(400).json({ error: "This event doesn't have a date set yet." });
+  }
+
+  res.set('Content-Type', 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${icsFilename(rows[0].name)}"`);
+  res.send(ics);
+});
+
+// --- Guest ticket ---
+//
+// The token is the only credential, so this is deliberately narrow: it returns
+// the guest's own reply and the event's public details, never the guest list.
+
+app.get('/api/tickets/:token', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT r.id, r.name, r.email, r.status, r.adults, r.kids, r.ticket_token,
+            e.slug, e.name AS event_name, e.event_date, e.location, e.description,
+            (e.image_data IS NOT NULL OR e.template_id IS NOT NULL) AS has_image,
+            c.checked_in_at
+     FROM rsvps r
+     JOIN events e ON e.id = r.event_id
+     LEFT JOIN checkins c ON c.rsvp_id = r.id
+     WHERE r.ticket_token = $1`,
+    [req.params.token]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Ticket not found.' });
+  const t = rows[0];
+
+  res.json({
+    guestName: t.name,
+    status: t.status,
+    adults: t.adults,
+    kids: t.kids,
+    party: t.adults + t.kids,
+    checkedInAt: t.checked_in_at,
+    token: t.ticket_token,
+    event: {
+      name: t.event_name,
+      event_date: t.event_date,
+      location: t.location,
+      description: t.description,
+      shareUrl: makeShareUrl(req, t.slug),
+      imageUrl: makeImageUrl(req, t.slug, t.has_image),
+      calendarUrl: `${req.protocol}://${req.get('host')}/api/events/${t.slug}/calendar.ics`,
+    },
+  });
 });
 
 app.get('/api/events/:slug/comments', async (req, res) => {
@@ -764,12 +1212,15 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     // rather than stacking a second row, which would double-count headcount
     // against the capacity limit.
     const { rows: existingRows } = await client.query(
-      `SELECT id, status FROM rsvps
+      `SELECT id, status, ticket_token FROM rsvps
        WHERE event_id = $1 AND lower(email) = $2
        ORDER BY created_at ASC LIMIT 1`,
       [event.id, normalizeEmail(email)]
     );
     const existing = existingRows[0] || null;
+    // A revised reply keeps its original ticket, so a guest who already saved or
+    // screenshotted theirs doesn't find it dead at the door.
+    const ticketToken = existing?.ticket_token || newTicketToken();
 
     let status;
     if (!isAttending) {
@@ -791,9 +1242,9 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     if (existing) {
       await client.query(
         `UPDATE rsvps SET name = $1, email = $2, attending = $3, adults = $4, kids = $5,
-                          comment = $6, status = $7,
-                          created_at = CASE WHEN $8 THEN now() ELSE created_at END
-         WHERE id = $9`,
+                          comment = $6, status = $7, ticket_token = $8,
+                          created_at = CASE WHEN $9 THEN now() ELSE created_at END
+         WHERE id = $10`,
         [
           name.trim().slice(0, 100),
           email.trim().slice(0, 200),
@@ -802,14 +1253,15 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
           kidsCount,
           (comment || '').trim().slice(0, 500),
           status,
+          ticketToken,
           resetQueueTime,
           existing.id,
         ]
       );
     } else {
       await client.query(
-        `INSERT INTO rsvps (id, event_id, name, email, attending, adults, kids, comment, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO rsvps (id, event_id, name, email, attending, adults, kids, comment, status, ticket_token)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           crypto.randomUUID(),
           event.id,
@@ -820,6 +1272,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
           kidsCount,
           (comment || '').trim().slice(0, 500),
           status,
+          ticketToken,
         ]
       );
     }
@@ -828,6 +1281,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     result = {
       status,
       event,
+      ticketToken,
       // Giving up a confirmed spot is what makes room for the waitlist.
       freedSpace: existing !== null && existing.status === 'confirmed' && status !== 'confirmed',
       revised: existing !== null,
@@ -861,6 +1315,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     status: result.status,
     waitlisted: result.status === 'waitlist',
     revised: result.revised,
+    ticketUrl: `${req.protocol}://${req.get('host')}/t/${result.ticketToken}`,
   });
 });
 
@@ -869,10 +1324,23 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
 app.get('/dashboard', requirePageAuth, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'))
 );
+app.get('/host/:eventId/checkin', requirePageAuth, (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'checkin.html'))
+);
 app.get('/host/:eventId', requirePageAuth, (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'host-event.html'))
 );
 app.get('/e/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'event.html')));
+app.get('/t/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ticket.html')));
+app.get('/browse', (req, res) => res.sendFile(path.join(__dirname, 'public', 'browse.html')));
+app.get('/@:handle', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+
+// The whole point of the embed is to run inside someone else's page, so this one
+// route opts into being framed anywhere. Nothing else on the site does.
+app.get('/embed/:slug', (req, res) => {
+  res.set('Content-Security-Policy', 'frame-ancestors *');
+  res.sendFile(path.join(__dirname, 'public', 'embed.html'));
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
