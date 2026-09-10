@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Event Dashboard</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
 </head>
 <body>
   <div class="wrap studio-page">
@@ -68,6 +69,13 @@
              <div class="share-panel-actions"><button type="button" class="btn btn-primary btn-small" id="share-copy-btn">Copy invite link</button><a class="btn btn-ghost btn-small" id="share-open-btn" href="#" target="_blank" rel="noopener">Open guest view ↗</a></div>
              <div class="share-panel-note" id="share-panel-note">Choose a look and save your invitation to unlock sharing.</div>
            </section>
+
+           <section id="faq-editor" class="studio-card faq-editor">
+             <div class="studio-card-heading"><div><span class="section-kicker">Good to know</span><h2>Answer it once</h2><p>The questions every guest asks — parking, dress code, whether to bring anything. These appear on the invitation page.</p></div></div>
+             <div id="faq-editor-list" class="faq-editor-list"></div>
+             <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
+             <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
+           </section>
         </main>
 
         <aside class="studio-inspector">
@@ -78,6 +86,7 @@
               <label for="edit-date">Date &amp; time</label><input type="datetime-local" id="edit-date" required /><div class="hint">Choose a future date and time.</div>
               <label for="edit-location">Location</label><input type="text" id="edit-location" maxlength="300" />
               <label for="edit-description">Your note</label><textarea id="edit-description" maxlength="1000" placeholder="Give guests a little feeling for the day."></textarea>
+              <label for="edit-capacity">Guest limit</label><input type="number" id="edit-capacity" min="0" step="1" placeholder="Leave blank for no limit" /><div class="hint" id="capacity-hint">No limit — everyone who replies yes gets a spot.</div>
               <div class="error-msg" id="edit-error"></div>
               <div class="inspector-save"><button type="submit" class="btn btn-primary btn-small">Save details</button><button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">Notify guests</button></div>
             </form>
@@ -98,9 +107,9 @@
         </aside>
         </div>
       <section class="guest-pulse studio-card">
-        <div class="studio-card-heading"><div><span class="section-kicker">The pulse</span><h2>Feel the room fill up</h2><p>Keep an eye on replies without leaving your creative flow.</p></div><div class="pulse-actions"><button class="btn btn-ghost btn-small" id="email-attending-btn">Email attending</button><button class="btn btn-ghost btn-small" id="email-all-btn">Email everyone</button></div></div>
+        <div class="studio-card-heading"><div><span class="section-kicker">The pulse</span><h2>Feel the room fill up</h2><p>Keep an eye on replies without leaving your creative flow.</p></div><div class="pulse-actions"><button class="btn btn-ghost btn-small" id="email-attending-btn">Email attending</button><button class="btn btn-ghost btn-small" id="email-waitlist-btn" style="display:none;">Email waitlist</button><button class="btn btn-ghost btn-small" id="email-all-btn">Email everyone</button></div></div>
         <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
-        <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
+        <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile" id="stat-waitlist-tile" style="display:none;"><div class="num" id="stat-waitlist">0</div><div class="label">Waitlisted</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
         <div class="guest-list-heading"><h3>Guest notes</h3><span>Private host view</span></div>
         <div class="table-scroll"><table class="guest-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Submitted</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
         <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet — share your invitation to get the first hello.</div>

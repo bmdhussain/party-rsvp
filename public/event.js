@@ -53,6 +53,9 @@ async function loadEvent() {
       }
     }
 
+    renderCapacity(event);
+    renderFaqs(event.faqs);
+
     if (event.inviteOnly) {
       document.getElementById('invite-only-note').style.display = 'block';
     }
@@ -60,6 +63,49 @@ async function loadEvent() {
     document.getElementById('event-name').textContent = 'Event not found';
     document.getElementById('rsvp-card').style.display = 'none';
   }
+}
+
+// A capped event shows how much room is left; an uncapped one shows nothing at
+// all, so events that don't care about numbers stay uncluttered.
+function renderCapacity(event) {
+  const strip = document.getElementById('capacity-strip');
+  if (!strip) return;
+  if (event.capacity === null || event.capacity === undefined) {
+    strip.style.display = 'none';
+    return;
+  }
+
+  const left = event.spotsLeft;
+  const taken = event.capacity - left;
+  const pct = event.capacity > 0 ? Math.min(100, Math.round((taken / event.capacity) * 100)) : 100;
+  strip.style.display = 'flex';
+  strip.classList.toggle('is-full', Boolean(event.isFull));
+  strip.innerHTML = event.isFull
+    ? `<div class="capacity-copy"><strong>This event is full</strong>
+         <small>You can still reply — you'll join the waitlist, and we'll email you if a spot frees up.</small></div>
+       <div class="capacity-meter" role="img" aria-label="Full"><i style="width:100%"></i></div>`
+    : `<div class="capacity-copy"><strong>${left} ${left === 1 ? 'spot' : 'spots'} left</strong>
+         <small>${taken} of ${event.capacity} taken</small></div>
+       <div class="capacity-meter" role="img" aria-label="${pct}% full"><i style="width:${pct}%"></i></div>`;
+}
+
+function renderFaqs(faqs) {
+  const section = document.getElementById('faq-section');
+  if (!section) return;
+  if (!Array.isArray(faqs) || !faqs.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  document.getElementById('faq-list').innerHTML = faqs
+    .map(
+      (f) => `
+      <details class="faq-item">
+        <summary>${escapeHtml(f.question)}</summary>
+        <div class="faq-answer">${escapeHtml(f.answer)}</div>
+      </details>`
+    )
+    .join('');
 }
 
 function timeAgo(iso) {
@@ -88,6 +134,18 @@ function initials(name) {
     .join('');
 }
 
+// A waitlisted guest said yes but hasn't got a spot, so the wall mustn't show
+// them as coming. Falls back to the old boolean for replies made before
+// statuses existed.
+function wallState(comment) {
+  const status = comment.status || (comment.attending ? 'confirmed' : 'declined');
+  if (status === 'confirmed') return { key: 'confirmed', cls: 'is-coming', badge: 'yes', label: 'Coming' };
+  if (status === 'waitlist') {
+    return { key: 'waitlist', cls: 'is-waiting', badge: 'waiting', label: 'On the waitlist' };
+  }
+  return { key: 'declined', cls: 'is-away', badge: 'no', label: 'Sending love' };
+}
+
 async function loadComments() {
   const list = document.getElementById('comments-list');
   try {
@@ -100,30 +158,36 @@ async function loadComments() {
       return;
     }
 
-    const coming = comments.filter((comment) => comment.attending).length;
-    const away = comments.length - coming;
+    const byState = (state) => comments.filter((c) => wallState(c).key === state);
+    const coming = byState('confirmed').length;
+    const waiting = byState('waitlist').length;
+    const away = byState('declined').length;
+
     document.getElementById('wall-response-count').innerHTML =
       `<strong>${comments.length}</strong><span>${comments.length === 1 ? 'note' : 'notes'}</span>`;
     document.getElementById('wall-coming-count').textContent = coming;
     document.getElementById('wall-away-count').textContent = away;
+    const waitingTile = document.getElementById('wall-waiting-item');
+    if (waitingTile) {
+      waitingTile.style.display = waiting ? 'flex' : 'none';
+      document.getElementById('wall-waiting-count').textContent = waiting;
+    }
     document.getElementById('wall-summary').style.display = 'flex';
 
-    const orderedComments = [
-      ...comments.filter((comment) => comment.attending),
-      ...comments.filter((comment) => !comment.attending),
-    ];
+    const orderedComments = [...byState('confirmed'), ...byState('waitlist'), ...byState('declined')];
     list.innerHTML = orderedComments
-      .map(
-        (c, index) => `
-        <article class="comment-item ${c.attending ? 'is-coming' : 'is-away'}" style="--card-index:${index % 5}">
+      .map((c, index) => {
+        const state = wallState(c);
+        return `
+        <article class="comment-item ${state.cls}" style="--card-index:${index % 5}">
           <div class="comment-topline">
             <span class="comment-avatar" aria-hidden="true">${escapeHtml(initials(c.name))}</span>
             <span class="comment-person"><strong>${escapeHtml(c.name)}</strong><small>${timeAgo(c.created_at)}</small></span>
-            <span class="wall-status ${c.attending ? 'yes' : 'no'}"><i></i>${c.attending ? 'Coming' : 'Sending love'}</span>
+            <span class="wall-status ${state.badge}"><i></i>${state.label}</span>
           </div>
           <blockquote>${escapeHtml(c.comment)}</blockquote>
-        </article>`
-      )
+        </article>`;
+      })
       .join('');
   } catch (err) {
     list.innerHTML = '<div class="empty-note">Couldn\'t load messages.</div>';
@@ -177,9 +241,27 @@ function setupForm() {
         throw new Error(data.error || 'Something went wrong.');
       }
       form.style.display = 'none';
-      document.getElementById('success-box').style.display = 'block';
-      fireConfetti();
+      const box = document.getElementById('success-box');
+      box.style.display = 'block';
+
+      if (data.waitlisted) {
+        // No confetti for a waitlist placing — it would promise something the
+        // guest hasn't actually got yet.
+        box.classList.add('is-waitlist');
+        document.getElementById('success-emoji').textContent = '⏳';
+        document.getElementById('success-text').textContent = "You're on the waitlist";
+        document.getElementById('success-note').textContent =
+          "The event is full right now. You're in the queue, and we'll email you the moment a spot opens up.";
+      } else {
+        fireConfetti();
+        document.getElementById('success-text').textContent = data.revised
+          ? 'Your reply has been updated.'
+          : 'Thanks! Your RSVP is in.';
+        document.getElementById('success-note').textContent = '';
+      }
+
       loadComments();
+      loadEvent();
     } catch (err) {
       errorBox.textContent = err.message;
       errorBox.style.display = 'block';

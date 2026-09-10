@@ -10,6 +10,7 @@ const multer = require('multer');
 const { pool, init } = require('./lib/db');
 const { passport, providers } = require('./lib/auth');
 const { TEMPLATES, findTemplate } = require('./lib/templates');
+const { parseCapacity, confirmedHeadcount, promoteFromWaitlist } = require('./lib/capacity');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -171,6 +172,23 @@ async function sendBrevoEmail({ to, subject, intro, event }) {
   return body;
 }
 
+// Fire-and-forget: a promotion must not fail because Brevo is over quota or
+// down. Volume here is inherently small (only fires when room actually frees).
+function notifyPromoted(promoted, event) {
+  for (const guest of promoted) {
+    sendBrevoEmail({
+      to: { email: guest.email, name: guest.name },
+      subject: `A spot opened up — ${event.name}`,
+      intro:
+        `Good news: a spot just opened up at ${event.name}, and you're off the ` +
+        `waitlist. You're confirmed — we'll see you there.`,
+      event,
+    }).catch((err) => {
+      console.error(`Waitlist promotion email failed for ${guest.email}:`, err.message);
+    });
+  }
+}
+
 // --- Auth ---
 
 app.get('/api/auth/providers', (req, res) => res.json(providers));
@@ -270,22 +288,44 @@ app.patch('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, res
     return res.status(400).json({ error: 'Event name is required.' });
   }
   const eventDate = date ? new Date(date) : null;
+  // An absent `capacity` key leaves the limit alone; an empty one clears it
+  // back to unlimited.
+  const hasCapacity = Object.prototype.hasOwnProperty.call(req.body || {}, 'capacity');
 
   const { rows } = await pool.query(
-    `UPDATE events SET name = $1, event_date = $2, location = $3, description = $4
-     WHERE id = $5 AND owner_id = $6
-     RETURNING id, slug`,
+    `UPDATE events SET name = $1, event_date = $2, location = $3, description = $4,
+                       capacity = CASE WHEN $5 THEN $6::int ELSE capacity END
+     WHERE id = $7 AND owner_id = $8
+     RETURNING id, slug, name, event_date, location, description, capacity`,
     [
       name.trim().slice(0, 150),
       eventDate && !Number.isNaN(eventDate.getTime()) ? eventDate : null,
       (location || '').trim().slice(0, 300),
       (description || '').trim().slice(0, 1000),
+      hasCapacity,
+      hasCapacity ? parseCapacity(req.body.capacity) : null,
       req.params.eventId,
       req.user.id,
     ]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
-  res.json({ ok: true, shareUrl: makeShareUrl(req, rows[0].slug) });
+
+  // Raising (or removing) the limit is the other way room appears. Safe to run
+  // unconditionally — it's a no-op when the waitlist is empty or still can't fit.
+  let promotedCount = 0;
+  if (hasCapacity) {
+    try {
+      const promoted = await promoteFromWaitlist(rows[0].id);
+      promotedCount = promoted.length;
+      if (promoted.length) {
+        notifyPromoted(promoted, { ...rows[0], shareUrl: makeShareUrl(req, rows[0].slug) });
+      }
+    } catch (err) {
+      console.error('Waitlist promotion failed after capacity change:', err);
+    }
+  }
+
+  res.json({ ok: true, shareUrl: makeShareUrl(req, rows[0].slug), promoted: promotedCount });
 });
 
 app.post(
@@ -331,36 +371,47 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
     `SELECT id, slug, owner_id, name, event_date, location, description, created_at, invite_mode,
+            capacity,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
      FROM events WHERE id = $1 AND owner_id = $2`,
     [req.params.eventId, req.user.id]
   );
   if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
 
+  // Waitlisted guests read oldest-first (that's the promotion order); everyone
+  // else reads newest-first, as the host list always has.
   const { rows: rsvps } = await pool.query(
-    'SELECT * FROM rsvps WHERE event_id = $1 ORDER BY created_at DESC',
+    `SELECT * FROM rsvps WHERE event_id = $1
+     ORDER BY CASE WHEN status = 'waitlist' THEN 0 ELSE 1 END,
+              CASE WHEN status = 'waitlist' THEN created_at END ASC,
+              created_at DESC`,
     [req.params.eventId]
   );
 
   const totals = rsvps.reduce(
     (acc, r) => {
-      if (r.attending) {
+      if (r.status === 'confirmed') {
         acc.adults += r.adults;
         acc.kids += r.kids;
         acc.attendingCount += 1;
+      } else if (r.status === 'waitlist') {
+        acc.waitlistCount += 1;
+        acc.waitlistHeads += r.adults + r.kids;
       } else {
         acc.declinedCount += 1;
       }
       return acc;
     },
-    { adults: 0, kids: 0, attendingCount: 0, declinedCount: 0 }
+    { adults: 0, kids: 0, attendingCount: 0, declinedCount: 0, waitlistCount: 0, waitlistHeads: 0 }
   );
 
+  const capacity = eventRows[0].capacity;
   res.json({
     event: {
       ...eventRows[0],
       shareUrl: makeShareUrl(req, eventRows[0].slug),
       imageUrl: makeImageUrl(req, eventRows[0].slug, eventRows[0].has_image),
+      spotsLeft: capacity === null ? null : Math.max(0, capacity - (totals.adults + totals.kids)),
     },
     rsvps,
     totals,
@@ -376,10 +427,18 @@ app.post('/api/events/:eventId/email', requireAuth, verifySameOrigin, async (req
       label: 'RSVP guests',
     },
     attending: {
+      // Confirmed only — a waitlisted guest still has `attending` true but
+      // hasn't got a spot, so they shouldn't get "see you there" mail.
       sql: `SELECT lower(email) AS email, max(name) AS name
-            FROM rsvps WHERE event_id = $1 AND attending = true
+            FROM rsvps WHERE event_id = $1 AND status = 'confirmed'
             GROUP BY lower(email) LIMIT 500`,
       label: 'attending guests',
+    },
+    waitlist: {
+      sql: `SELECT lower(email) AS email, max(name) AS name
+            FROM rsvps WHERE event_id = $1 AND status = 'waitlist'
+            GROUP BY lower(email) LIMIT 500`,
+      label: 'waitlisted guests',
     },
     restricted: {
       sql: `SELECT i.email, max(r.name) AS name
@@ -517,21 +576,99 @@ app.delete('/api/events/:eventId/invites/:email', requireAuth, verifySameOrigin,
   res.json({ ok: true });
 });
 
+// --- FAQ (host) ---
+
+app.get('/api/events/:eventId/faqs', requireAuth, async (req, res) => {
+  const { rows: eventRows } = await pool.query(
+    'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  const { rows } = await pool.query(
+    `SELECT question, answer FROM event_faqs
+     WHERE event_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [req.params.eventId]
+  );
+  res.json(rows);
+});
+
+// Replaces the whole list in one transaction. The host edits the FAQ as a block
+// in the studio, so per-row CRUD would only add round trips and reordering bugs.
+app.put('/api/events/:eventId/faqs', requireAuth, verifySameOrigin, async (req, res) => {
+  const incoming = Array.isArray(req.body?.faqs) ? req.body.faqs : null;
+  if (!incoming) return res.status(400).json({ error: 'Expected a list of FAQs.' });
+
+  // Half-filled rows are dropped rather than rejected — the editor always has a
+  // blank pair at the bottom for the host to type into.
+  const cleaned = incoming
+    .map((f) => ({
+      question: typeof f?.question === 'string' ? f.question.trim().slice(0, 200) : '',
+      answer: typeof f?.answer === 'string' ? f.answer.trim().slice(0, 1000) : '',
+    }))
+    .filter((f) => f.question && f.answer)
+    .slice(0, 30);
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: eventRows } = await client.query(
+      'SELECT id FROM events WHERE id = $1 AND owner_id = $2',
+      [req.params.eventId, req.user.id]
+    );
+    if (!eventRows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    await client.query('DELETE FROM event_faqs WHERE event_id = $1', [req.params.eventId]);
+    for (const [index, faq] of cleaned.entries()) {
+      await client.query(
+        `INSERT INTO event_faqs (id, event_id, question, answer, sort_order)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [crypto.randomUUID(), req.params.eventId, faq.question, faq.answer, index]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Saving FAQs failed:', err);
+    return res.status(500).json({ error: 'Could not save the FAQ.' });
+  } finally {
+    client.release();
+  }
+
+  res.json({ ok: true, count: cleaned.length });
+});
+
 // --- Public event + RSVP (no auth — anyone with the link) ---
 
 app.get('/api/events/:slug/public', async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT name, event_date, location, description, invite_mode,
+    `SELECT id, name, event_date, location, description, invite_mode, capacity,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
      FROM events WHERE slug = $1`,
     [req.params.slug]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
-  const { has_image, invite_mode, ...event } = rows[0];
+  const { id, has_image, invite_mode, capacity, ...event } = rows[0];
+
+  const taken = await confirmedHeadcount(pool, id);
+  const { rows: faqs } = await pool.query(
+    `SELECT question, answer FROM event_faqs
+     WHERE event_id = $1 ORDER BY sort_order ASC, created_at ASC`,
+    [id]
+  );
+
   res.json({
     ...event,
     inviteOnly: invite_mode === 'restricted',
     imageUrl: makeImageUrl(req, req.params.slug, has_image),
+    capacity,
+    goingCount: taken,
+    spotsLeft: capacity === null ? null : Math.max(0, capacity - taken),
+    isFull: capacity !== null && taken >= capacity,
+    faqs,
   });
 });
 
@@ -562,7 +699,7 @@ app.get('/api/events/:slug/comments', async (req, res) => {
   if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
 
   const { rows } = await pool.query(
-    `SELECT name, attending, comment, created_at FROM rsvps
+    `SELECT name, attending, status, comment, created_at FROM rsvps
      WHERE event_id = $1 AND comment IS NOT NULL AND comment <> ''
      ORDER BY created_at DESC`,
     [eventRows[0].id]
@@ -571,12 +708,6 @@ app.get('/api/events/:slug/comments', async (req, res) => {
 });
 
 app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
-  const { rows: eventRows } = await pool.query(
-    'SELECT id, invite_mode FROM events WHERE slug = $1',
-    [req.params.slug]
-  );
-  if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
-
   const { name, email, attending, adults, kids, comment } = req.body || {};
 
   if (!name || typeof name !== 'string' || !name.trim()) {
@@ -590,18 +721,6 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     return res.status(400).json({ error: 'A valid email is required.' });
   }
 
-  if (eventRows[0].invite_mode === 'restricted') {
-    const { rows: inviteRows } = await pool.query(
-      'SELECT 1 FROM event_invites WHERE event_id = $1 AND email = $2',
-      [eventRows[0].id, normalizeEmail(email)]
-    );
-    if (!inviteRows[0]) {
-      return res.status(403).json({
-        error: "This event is invite-only and this email isn't on the guest list. Please check with the host.",
-      });
-    }
-  }
-
   const isAttending = attending === 'yes';
   const adultsCount = isAttending ? Math.max(0, parseInt(adults, 10) || 0) : 0;
   const kidsCount = isAttending ? Math.max(0, parseInt(kids, 10) || 0) : 0;
@@ -610,22 +729,139 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Please include at least one guest.' });
   }
 
-  await pool.query(
-    `INSERT INTO rsvps (id, event_id, name, email, attending, adults, kids, comment)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      crypto.randomUUID(),
-      eventRows[0].id,
-      name.trim().slice(0, 100),
-      email.trim().slice(0, 200),
-      isAttending,
-      adultsCount,
-      kidsCount,
-      (comment || '').trim().slice(0, 500),
-    ]
-  );
+  const client = await pool.connect();
+  let result;
+  try {
+    await client.query('BEGIN');
 
-  res.json({ ok: true });
+    // FOR UPDATE serialises RSVPs for this event, so two guests arriving at the
+    // same moment can't both be told they got the last spot.
+    const { rows: eventRows } = await client.query(
+      `SELECT id, slug, name, event_date, location, description, invite_mode, capacity
+       FROM events WHERE slug = $1 FOR UPDATE`,
+      [req.params.slug]
+    );
+    if (!eventRows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    const event = eventRows[0];
+
+    if (event.invite_mode === 'restricted') {
+      const { rows: inviteRows } = await client.query(
+        'SELECT 1 FROM event_invites WHERE event_id = $1 AND email = $2',
+        [event.id, normalizeEmail(email)]
+      );
+      if (!inviteRows[0]) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({
+          error: "This event is invite-only and this email isn't on the guest list. Please check with the host.",
+        });
+      }
+    }
+
+    // One reply per email address: replying again revises the earlier reply
+    // rather than stacking a second row, which would double-count headcount
+    // against the capacity limit.
+    const { rows: existingRows } = await client.query(
+      `SELECT id, status FROM rsvps
+       WHERE event_id = $1 AND lower(email) = $2
+       ORDER BY created_at ASC LIMIT 1`,
+      [event.id, normalizeEmail(email)]
+    );
+    const existing = existingRows[0] || null;
+
+    let status;
+    if (!isAttending) {
+      status = 'declined';
+    } else if (event.capacity === null) {
+      status = 'confirmed';
+    } else {
+      // Exclude this guest's own current row: someone already confirmed keeps
+      // their spot when they edit their reply, and is only waitlisted if they
+      // now need more room than the event has left.
+      const taken = await confirmedHeadcount(client, event.id, existing ? existing.id : null);
+      status = adultsCount + kidsCount <= event.capacity - taken ? 'confirmed' : 'waitlist';
+    }
+
+    // Coming back after declining means asking for a spot now, so the queue
+    // position reflects this reply rather than the original one.
+    const resetQueueTime = existing !== null && existing.status === 'declined' && isAttending;
+
+    if (existing) {
+      await client.query(
+        `UPDATE rsvps SET name = $1, email = $2, attending = $3, adults = $4, kids = $5,
+                          comment = $6, status = $7,
+                          created_at = CASE WHEN $8 THEN now() ELSE created_at END
+         WHERE id = $9`,
+        [
+          name.trim().slice(0, 100),
+          email.trim().slice(0, 200),
+          isAttending,
+          adultsCount,
+          kidsCount,
+          (comment || '').trim().slice(0, 500),
+          status,
+          resetQueueTime,
+          existing.id,
+        ]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO rsvps (id, event_id, name, email, attending, adults, kids, comment, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          crypto.randomUUID(),
+          event.id,
+          name.trim().slice(0, 100),
+          email.trim().slice(0, 200),
+          isAttending,
+          adultsCount,
+          kidsCount,
+          (comment || '').trim().slice(0, 500),
+          status,
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+    result = {
+      status,
+      event,
+      // Giving up a confirmed spot is what makes room for the waitlist.
+      freedSpace: existing !== null && existing.status === 'confirmed' && status !== 'confirmed',
+      revised: existing !== null,
+    };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('RSVP failed:', err);
+    return res.status(500).json({ error: 'Could not save your RSVP. Please try again.' });
+  } finally {
+    client.release();
+  }
+
+  if (result.freedSpace) {
+    try {
+      const promoted = await promoteFromWaitlist(result.event.id);
+      if (promoted.length) {
+        notifyPromoted(promoted, {
+          ...result.event,
+          shareUrl: makeShareUrl(req, result.event.slug),
+        });
+      }
+    } catch (err) {
+      // The guest's own RSVP is already saved; a promotion failure here is the
+      // host's problem to retry, not a reason to fail this response.
+      console.error('Waitlist promotion failed:', err);
+    }
+  }
+
+  res.json({
+    ok: true,
+    status: result.status,
+    waitlisted: result.status === 'waitlist',
+    revised: result.revised,
+  });
 });
 
 // --- Pages ---

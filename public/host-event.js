@@ -308,6 +308,9 @@ function render(data) {
   editDate.value = toLocalInputValue(data.event.event_date);
   document.getElementById('edit-location').value = data.event.location || '';
   document.getElementById('edit-description').value = data.event.description || '';
+  document.getElementById('edit-capacity').value =
+    data.event.capacity === null || data.event.capacity === undefined ? '' : data.event.capacity;
+  renderCapacityHint(data);
   setStudioStage(data.event.imageUrl ? 'share' : 'choose');
 
   editorState.layers = [];
@@ -333,6 +336,17 @@ function render(data) {
   document.getElementById('stat-kids').textContent = data.totals.kids;
   document.getElementById('stat-declined').textContent = data.totals.declinedCount;
 
+  // The waitlist tile only earns its space once someone is actually on it.
+  const waitlistTile = document.getElementById('stat-waitlist-tile');
+  if (waitlistTile) {
+    waitlistTile.style.display = data.totals.waitlistCount ? 'block' : 'none';
+    document.getElementById('stat-waitlist').textContent = data.totals.waitlistCount;
+  }
+  const emailWaitlistBtn = document.getElementById('email-waitlist-btn');
+  if (emailWaitlistBtn) {
+    emailWaitlistBtn.style.display = data.totals.waitlistCount ? 'inline-flex' : 'none';
+  }
+
   const body = document.getElementById('guest-table-body');
   const empty = document.getElementById('guest-empty');
 
@@ -344,19 +358,57 @@ function render(data) {
   empty.style.display = 'none';
 
   body.innerHTML = data.rsvps
-    .map(
-      (r) => `
-      <tr>
+    .map((r) => {
+      const badge = guestBadge(r);
+      return `
+      <tr class="${badge.rowClass}">
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.email)}</td>
-        <td><span class="pill ${r.attending ? 'badge yes' : 'badge no'}">${r.attending ? 'Yes' : 'No'}</span></td>
-        <td>${r.attending ? r.adults : '—'}</td>
-        <td>${r.attending ? r.kids : '—'}</td>
+        <td><span class="pill badge ${badge.cls}">${badge.label}</span></td>
+        <td>${badge.saidYes ? r.adults : '—'}</td>
+        <td>${badge.saidYes ? r.kids : '—'}</td>
         <td>${escapeHtml(r.comment || '')}</td>
         <td>${formatWhen(r.created_at)}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join('');
+}
+
+// Waitlisted guests said yes but haven't got a spot — the host needs to see
+// that distinction at a glance, not a bare "Yes".
+function guestBadge(rsvp) {
+  const status = rsvp.status || (rsvp.attending ? 'confirmed' : 'declined');
+  if (status === 'waitlist') {
+    return { cls: 'waiting', label: 'Waitlist', saidYes: true, rowClass: 'is-waitlisted' };
+  }
+  if (status === 'confirmed') {
+    return { cls: 'yes', label: 'Coming', saidYes: true, rowClass: '' };
+  }
+  return { cls: 'no', label: 'No', saidYes: false, rowClass: '' };
+}
+
+// Spells out what the cap means right now, so the host isn't left doing the
+// "is 12 of 20 taken good?" arithmetic themselves.
+function renderCapacityHint(data) {
+  const hint = document.getElementById('capacity-hint');
+  if (!hint) return;
+  const capacity = data.event.capacity;
+  if (capacity === null || capacity === undefined) {
+    hint.textContent = 'No limit — everyone who replies yes gets a spot.';
+    hint.className = 'hint';
+    return;
+  }
+  const taken = data.totals.adults + data.totals.kids;
+  const left = Math.max(0, capacity - taken);
+  const waiting = data.totals.waitlistCount;
+  hint.className = left === 0 ? 'hint is-full' : 'hint';
+  hint.textContent = left
+    ? `${taken} of ${capacity} spots taken — ${left} left.` +
+      (waiting ? ` ${waiting} waiting; raise the limit to let them in.` : '')
+    : `Full: ${taken} of ${capacity} spots taken.` +
+      (waiting
+        ? ` ${waiting} ${waiting === 1 ? 'guest is' : 'guests are'} on the waitlist — raise the limit to let them in.`
+        : '');
 }
 
 function setEmailStatus(message, type = 'success') {
@@ -423,6 +475,15 @@ document.getElementById('email-attending-btn').addEventListener('click', () => {
     subject: `You're on the guest list — ${lastData.event.name}`,
     intro: `Hi! We’re excited to see you at ${lastData.event.name}. Here’s the invitation with the latest details:`,
     button: document.getElementById('email-attending-btn'),
+  });
+});
+
+document.getElementById('email-waitlist-btn').addEventListener('click', () => {
+  composeGuestEmail({
+    recipientMode: 'waitlist',
+    subject: `You're on the waitlist — ${lastData.event.name}`,
+    intro: `Hi! ${lastData.event.name} is full at the moment and you're on the waitlist. We'll be in touch the moment a spot opens up:`,
+    button: document.getElementById('email-waitlist-btn'),
   });
 });
 
@@ -735,11 +796,14 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
     return;
   }
 
+  const capacityValue = document.getElementById('edit-capacity').value.trim();
   const payload = {
     name: document.getElementById('edit-name').value,
     date: dateValue,
     location: document.getElementById('edit-location').value,
     description: document.getElementById('edit-description').value,
+    // Empty means unlimited; the server reads '' as "clear the cap".
+    capacity: capacityValue,
   };
 
   try {
@@ -750,6 +814,11 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save changes.');
+    if (data.promoted) {
+      setEmailStatus(
+        `Saved. ${data.promoted} ${data.promoted === 1 ? 'guest was' : 'guests were'} moved off the waitlist and emailed.`
+      );
+    }
     loadDashboard();
   } catch (err) {
     errorBox.textContent = err.message;
@@ -861,6 +930,97 @@ document.getElementById('add-invites-btn').addEventListener('click', async () =>
   }
 });
 
+// --- FAQ editor ---
+//
+// The whole list is saved as a block rather than row by row: the host is
+// writing a short Q&A set, and a Save button matching the rest of the studio
+// beats an autosave-per-keystroke design here.
+
+function faqRow(question = '', answer = '') {
+  const row = document.createElement('div');
+  row.className = 'faq-editor-row';
+  row.innerHTML = `
+    <input type="text" class="faq-q" maxlength="200" placeholder="Is there parking?" />
+    <textarea class="faq-a" maxlength="1000" placeholder="Yes — free street parking right outside."></textarea>
+    <button type="button" class="btn btn-ghost btn-small faq-remove" aria-label="Remove this question">Remove</button>`;
+  row.querySelector('.faq-q').value = question;
+  row.querySelector('.faq-a').value = answer;
+  row.querySelector('.faq-remove').addEventListener('click', () => {
+    row.remove();
+    ensureBlankFaqRow();
+  });
+  return row;
+}
+
+// Always leaves one empty pair at the bottom so there's somewhere to type
+// without hunting for an "add" button first.
+function ensureBlankFaqRow() {
+  const list = document.getElementById('faq-editor-list');
+  if (!list) return;
+  const rows = [...list.querySelectorAll('.faq-editor-row')];
+  const lastRow = rows[rows.length - 1];
+  const lastIsBlank =
+    lastRow &&
+    !lastRow.querySelector('.faq-q').value.trim() &&
+    !lastRow.querySelector('.faq-a').value.trim();
+  if (!lastIsBlank) list.appendChild(faqRow());
+}
+
+async function loadFaqs() {
+  const list = document.getElementById('faq-editor-list');
+  if (!list) return;
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/faqs`);
+    if (!res.ok) throw new Error('could not load');
+    const faqs = await res.json();
+    list.innerHTML = '';
+    faqs.forEach((f) => list.appendChild(faqRow(f.question, f.answer)));
+    ensureBlankFaqRow();
+  } catch (err) {
+    list.innerHTML = '';
+    ensureBlankFaqRow();
+  }
+}
+
+async function saveFaqs(button) {
+  const list = document.getElementById('faq-editor-list');
+  const statusEl = document.getElementById('faq-status');
+  const faqs = [...list.querySelectorAll('.faq-editor-row')].map((row) => ({
+    question: row.querySelector('.faq-q').value,
+    answer: row.querySelector('.faq-a').value,
+  }));
+
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Saving…';
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/faqs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ faqs }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save the FAQ.');
+    statusEl.textContent = data.count
+      ? `Saved — ${data.count} ${data.count === 1 ? 'question' : 'questions'} on the guest page.`
+      : 'Saved — no questions, so the section stays hidden from guests.';
+    statusEl.className = 'faq-status success';
+    loadFaqs();
+  } catch (err) {
+    statusEl.textContent = err.message;
+    statusEl.className = 'faq-status error';
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+document.getElementById('add-faq-btn').addEventListener('click', () => {
+  document.getElementById('faq-editor-list').appendChild(faqRow());
+});
+
+document.getElementById('save-faq-btn').addEventListener('click', (e) => saveFaqs(e.currentTarget));
+
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/auth/logout', { method: 'POST' });
   window.location.href = '/';
@@ -868,3 +1028,4 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 
 loadDashboard();
 loadTemplates();
+loadFaqs();

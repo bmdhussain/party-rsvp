@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>You're Invited!</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
 </head>
 <body>
@@ -40,6 +41,8 @@
     <div class="share-row">
       <button class="btn btn-ghost" id="copy-link-btn">Copy invite link to share</button>
     </div>
+
+    <div class="capacity-strip" id="capacity-strip" style="display:none;" aria-live="polite"></div>
 
     <div class="card" id="rsvp-card">
       <h2>RSVP</h2>
@@ -89,8 +92,9 @@
       </form>
 
       <div class="success-box" id="success-box" style="display:none;">
-        <div class="big-emoji">🥳</div>
-        <p>Thanks! Your RSVP is in.</p>
+        <div class="big-emoji" id="success-emoji">🥳</div>
+        <p id="success-text">Thanks! Your RSVP is in.</p>
+        <p class="success-note" id="success-note"></p>
       </div>
     </div>
 
@@ -107,11 +111,18 @@
       </div>
       <div class="wall-summary" id="wall-summary" style="display:none;">
         <div class="wall-summary-item coming"><span class="summary-dot"></span><strong id="wall-coming-count">0</strong><span>coming</span></div>
+        <div class="wall-summary-item waiting" id="wall-waiting-item" style="display:none;"><span class="summary-dot"></span><strong id="wall-waiting-count">0</strong><span>on the waitlist</span></div>
         <div class="wall-summary-item away"><span class="summary-dot"></span><strong id="wall-away-count">0</strong><span>sending love</span></div>
       </div>
       <div id="comments-list" class="comments-grid">
         <div class="empty-note">Loading comments…</div>
       </div>
+    </section>
+
+    <section class="card faq-section" id="faq-section" style="display:none;">
+      <div class="eyebrow">Before you come</div>
+      <h2>Good to know</h2>
+      <div id="faq-list" class="faq-list"></div>
     </section>
 
     <div class="footer-link"><a href="/">Want to host your own event?</a></div>

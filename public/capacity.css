@@ -1,0 +1,256 @@
+/* Phase 1 — guest limits, waitlist, and per-event FAQ.
+   Kept in its own file so styles.css (authored in Replit) stays untouched.
+   Tokens (--ink, --muted, --paper, --line, --coral, --sun, --teal) come from
+   styles.css, which loads first. Amber is the waitlist colour throughout:
+   warmer than "no", short of the green of a confirmed spot. */
+
+/* --- Guest page: how much room is left --- */
+
+.capacity-strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 15px 18px;
+  border-radius: 16px;
+  background: var(--paper, #fffaf5);
+  border: 1px solid var(--line, rgba(75, 40, 88, 0.14));
+  box-shadow: 0 7px 18px rgba(61, 36, 64, 0.055);
+}
+
+.capacity-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.capacity-copy strong {
+  font-size: 15px;
+  color: var(--ink, #291b35);
+}
+
+.capacity-copy small {
+  font-size: 12px;
+  color: var(--muted, #76677c);
+}
+
+.capacity-meter {
+  flex: 1 1 140px;
+  height: 7px;
+  min-width: 120px;
+  border-radius: 99px;
+  background: rgba(75, 40, 88, 0.1);
+  overflow: hidden;
+}
+
+.capacity-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--teal, #3b9f9b), #4a9d84);
+  transition: width 0.4s ease;
+}
+
+.capacity-strip.is-full {
+  border-color: rgba(237, 109, 100, 0.35);
+  background: #fff6f3;
+}
+
+.capacity-strip.is-full .capacity-meter i {
+  background: linear-gradient(90deg, var(--sun, #f5b94d), var(--coral, #ed6d64));
+}
+
+/* --- Guest page: waitlist confirmation --- */
+
+/* The default success box crowns itself with a celebratory conic gradient.
+   A waitlist placing hasn't earned that yet, so it gets a calmer amber ring. */
+.success-box.is-waitlist:before {
+  background: radial-gradient(circle, #fff3d6 0 42%, transparent 43%),
+    conic-gradient(var(--sun, #f5b94d), #e3a63c, var(--sun, #f5b94d));
+  animation: none;
+}
+
+.success-note {
+  margin: 8px auto 0;
+  max-width: 44ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted, #76677c);
+}
+
+.success-note:empty {
+  display: none;
+}
+
+/* --- Party wall: a waitlisted guest is not a confirmed guest --- */
+
+.wall-summary-item.waiting .summary-dot {
+  background: #d9a13a;
+  box-shadow: 0 0 0 3px rgba(217, 161, 58, 0.14);
+}
+
+.wall-status.waiting {
+  background: #faedc8;
+  color: #8b6819;
+}
+
+.wall-status.waiting i {
+  background: #d9a13a;
+}
+
+.comment-item.is-waiting:before {
+  background: #d9a13a;
+}
+
+/* --- Guest page: FAQ --- */
+
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.faq-item {
+  border: 1px solid var(--line, rgba(75, 40, 88, 0.14));
+  border-radius: 13px;
+  background: #fffdf9;
+  overflow: hidden;
+}
+
+.faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 13px 15px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #291b35);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary:after {
+  content: "+";
+  margin-left: auto;
+  font-size: 17px;
+  font-weight: 400;
+  color: #a66b43;
+  transition: transform 0.2s ease;
+}
+
+.faq-item[open] summary:after {
+  transform: rotate(45deg);
+}
+
+.faq-item[open] summary {
+  padding-bottom: 4px;
+}
+
+.faq-answer {
+  padding: 0 15px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted, #76677c);
+  white-space: pre-wrap;
+}
+
+/* --- Host studio: capacity readout --- */
+
+.hint.is-full {
+  color: #b3544d;
+  font-weight: 600;
+}
+
+/* --- Host studio: waitlisted guests in the table --- */
+
+.badge.waiting {
+  background: #faedc8;
+  color: #8b6819;
+}
+
+tr.is-waitlisted td {
+  background: rgba(245, 185, 77, 0.06);
+}
+
+/* --- Host studio: FAQ editor --- */
+
+.faq-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.faq-editor-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 10px;
+  padding: 13px;
+  border-radius: 14px;
+  border: 1px solid var(--line, rgba(75, 40, 88, 0.14));
+  background: #fffdf9;
+}
+
+.faq-editor-row .faq-q {
+  grid-column: 1;
+  margin: 0;
+  font-weight: 600;
+}
+
+.faq-editor-row .faq-a {
+  grid-column: 1;
+  margin: 0;
+  min-height: 62px;
+  resize: vertical;
+}
+
+/* Sits alongside the question, spanning both rows, so removing a pair reads as
+   removing the whole block rather than just the line next to it. */
+.faq-editor-row .faq-remove {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.faq-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.faq-status {
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 1em;
+}
+
+.faq-status.success {
+  color: #24776b;
+}
+
+.faq-status.error {
+  color: #b3544d;
+}
+
+@media (max-width: 560px) {
+  .faq-editor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .faq-editor-row .faq-remove {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .capacity-strip {
+    gap: 12px;
+  }
+}
