@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+</head>
+<body>
+  <div class="wrap explore-page">
+    <!--HEADER-->
+
+    <main>
+      <div class="browse-hero">
+        <div class="eyebrow">Explore</div>
+        <h1><!--SLOT:explore-title--></h1>
+        <p>Open invitations from hosts who chose to share them publicly. RSVP in seconds — no account needed.</p>
+      </div>
+
+      <form class="explore-filters" method="get" action="<!--SLOT:explore-action-->" role="search">
+        <label class="sr-only" for="explore-q">Search events</label>
+        <input class="explore-input" id="explore-q" type="search" name="q" value="<!--SLOT:explore-q-->" placeholder="Search by name or description" />
+        <label class="sr-only" for="explore-where">Where</label>
+        <input class="explore-input" id="explore-where" type="search" name="where" value="<!--SLOT:explore-where-->" placeholder="City or venue" />
+        <label class="sr-only" for="explore-when">When</label>
+        <select class="explore-input" id="explore-when" name="when"><!--SLOT:explore-when--></select>
+        <button class="btn btn-primary btn-small" type="submit">Search</button>
+      </form>
+
+      <nav class="template-filters explore-chips" aria-label="Categories"><!--SLOT:explore-chips--></nav>
+
+      <div id="browse-results" class="event-collection browse-grid" data-state="<!--SLOT:explore-state-->"><!--SLOT:explore-results--></div>
+      <div class="browse-more"><button type="button" class="btn btn-ghost" id="browse-more-btn" hidden>Show more</button></div>
+
+      <section class="explore-host-cta">
+        <div><span class="section-kicker">Hosting something?</span><h2>Put your event on this page.</h2><p>Make an invitation, choose "Listed publicly", and people nearby can find it here.</p></div>
+        <a class="btn btn-dark" href="/events/new">Create an event</a>
+      </section>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/explore.js"></script>
+</body>
+</html>

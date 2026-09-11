@@ -14,12 +14,89 @@ function formatEventDate(iso) {
   });
 }
 
+// Hides everything that only makes sense for a live invitation.
+function showUnavailable({ comingSoon }) {
+  ['rsvp-card', 'share-row', 'capacity-strip'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const wall = document.querySelector('.party-wall');
+  if (wall) wall.style.display = 'none';
+  if (comingSoon) {
+    document.getElementById('coming-soon').hidden = false;
+    document.getElementById('event-name').textContent = 'Invitation coming soon';
+  } else {
+    document.getElementById('event-name').textContent = 'Invitation not found';
+  }
+}
+
+let extrasLoaded = false;
+
+// Other upcoming public events from the same host — the thing that turns one
+// party into a reason to come back.
+async function loadMoreFromHost(event) {
+  try {
+    const more = await (await fetch(`/api/events/${SLUG}/more`)).json();
+    if (!more.length) return;
+    const section = document.getElementById('more-from-host');
+    const link = document.getElementById('more-from-host-link');
+    if (event.host) {
+      document.getElementById('more-from-host-title').textContent = `More from ${event.host.name}`;
+      link.href = `/@${encodeURIComponent(event.host.handle)}`;
+    } else {
+      link.hidden = true;
+    }
+    document.getElementById('more-from-host-list').innerHTML = more
+      .map(
+        (e) => `
+        <article class="browse-card">
+          <a class="browse-card-art" href="/e/${encodeURIComponent(e.slug)}" tabindex="-1" aria-hidden="true">${
+            e.imageUrl ? `<img src="${escapeHtml(e.imageUrl)}" alt="" loading="lazy" />` : '<span class="browse-card-empty">✦</span>'
+          }</a>
+          <div class="browse-card-body">
+            <div class="browse-card-when">${escapeHtml(formatEventDate(e.event_date))}</div>
+            <h3><a href="/e/${encodeURIComponent(e.slug)}">${escapeHtml(e.name)}</a></h3>
+            ${e.location ? `<div class="browse-card-where">${escapeHtml(e.location)}</div>` : ''}
+          </div>
+        </article>`
+      )
+      .join('');
+    section.hidden = false;
+  } catch (err) {
+    // Purely a bonus; the invitation stands on its own without it.
+  }
+}
+
 async function loadEvent() {
   try {
     const res = await fetch(`/api/events/${SLUG}/public`);
-    if (!res.ok) throw new Error('not found');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      showUnavailable({ comingSoon: Boolean(body.draft) });
+      return;
+    }
     const event = await res.json();
     document.title = `RSVP: ${event.name}`;
+
+    if (event.draft && event.isHost) {
+      document.getElementById('draft-preview-banner').hidden = false;
+      document.getElementById('draft-manage-link').href = `/host/${encodeURIComponent(event.eventId)}`;
+    }
+
+    // The host is only named when they've chosen to have a public page.
+    const hostLine = document.getElementById('host-line');
+    if (event.host) {
+      hostLine.innerHTML = `Hosted by <a href="/@${encodeURIComponent(event.host.handle)}">${escapeHtml(event.host.name)}</a>`;
+      hostLine.hidden = false;
+    }
+
+    const shareText = `You're invited: ${event.name}${event.event_date ? ` — ${formatEventDate(event.event_date)}` : ''}. RSVP here: ${event.shareUrl || window.location.href}`;
+    document.getElementById('whatsapp-btn').href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+    if (!extrasLoaded) {
+      extrasLoaded = true;
+      if (!event.draft) loadMoreFromHost(event);
+    }
 
     const dateText = formatEventDate(event.event_date);
 
@@ -65,9 +142,21 @@ async function loadEvent() {
     if (event.inviteOnly) {
       document.getElementById('invite-only-note').style.display = 'block';
     }
+
+    // A draft can't take replies, even from the host previewing it.
+    if (event.draft) {
+      const form = document.getElementById('rsvp-form');
+      if (form) {
+        form.querySelectorAll('input, textarea, button').forEach((el) => {
+          el.disabled = true;
+        });
+      }
+      const err = document.getElementById('form-error');
+      err.textContent = 'Replies open once you publish this invitation.';
+      err.style.display = 'block';
+    }
   } catch (err) {
-    document.getElementById('event-name').textContent = 'Event not found';
-    document.getElementById('rsvp-card').style.display = 'none';
+    showUnavailable({ comingSoon: false });
   }
 }
 

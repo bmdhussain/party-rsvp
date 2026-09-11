@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+</head>
+<body>
+  <div class="wrap studio-home app-page">
+    <!--HEADER-->
+
+    <main class="create-shell">
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/events">My events</a><span aria-hidden="true">›</span><span aria-current="page">New event</span></nav>
+
+      <ol class="setup-stepper" aria-label="Setup steps">
+        <li class="is-active" aria-current="step"><span>1</span>Basics</li>
+        <li><span>2</span>Look</li>
+        <li><span>3</span>Publish</li>
+        <li><span>4</span>Share</li>
+      </ol>
+
+      <section class="studio-card create-card">
+        <div class="studio-card-heading"><div><span class="section-kicker">Step 1 of 4</span><h1>Start with the basics</h1><p>You can change any of this later. It's saved as a private draft — nobody sees it until you publish.</p></div></div>
+
+        <form id="create-form" novalidate>
+          <label for="name">What's the occasion?</label>
+          <input type="text" id="name" required maxlength="150" placeholder="Alex's 30th Birthday" autocomplete="off" />
+
+          <div class="form-row">
+            <div>
+              <label for="date">When?</label>
+              <input type="datetime-local" id="date" required />
+            </div>
+            <div>
+              <label for="category">What kind of event?</label>
+              <select id="category"><option value="">Choose one (optional)</option></select>
+            </div>
+          </div>
+
+          <label for="location">Where?</label>
+          <input type="text" id="location" maxlength="300" placeholder="Venue name or address" />
+          <div class="hint">Shown on the invitation and the calendar entry guests save.</div>
+
+          <label for="description">A note for guests <span class="optional">optional</span></label>
+          <textarea id="description" maxlength="1000" placeholder="Come celebrate with cake, music and good company."></textarea>
+
+          <div class="error-msg" id="create-error"></div>
+
+          <div class="create-actions-row">
+            <a class="btn btn-ghost" href="/events">Cancel</a>
+            <button type="submit" class="btn btn-primary" id="create-submit">Save and choose a look →</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/create.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+</head>
+<body>
+  <div class="wrap studio-home app-page">
+    <!--HEADER-->
+
+    <main class="settings-shell">
+      <section class="page-heading"><div><span class="section-kicker">Settings</span><h1>Your account</h1></div></section>
+
+      <div class="settings-layout">
+        <nav class="settings-nav" aria-label="Settings sections">
+          <a href="#account">Account</a>
+          <a href="#public-page">Public page</a>
+        </nav>
+
+        <div class="settings-sections">
+          <section class="studio-card settings-card" id="account">
+            <div class="studio-card-heading"><div><span class="section-kicker">Account</span><h2>Signed in</h2><p>Your name and photo come from the account you sign in with.</p></div></div>
+            <div class="account-summary" id="account-summary"><div class="empty-note">Loading…</div></div>
+            <div class="settings-actions"><button type="button" class="btn btn-ghost btn-small" data-logout>Sign out</button></div>
+          </section>
+
+          <section class="studio-card settings-card profile-settings" id="public-page">
+            <div class="studio-card-heading"><div><span class="section-kicker">Public page</span><h2>Let people follow your events</h2><p>Claim a handle and your publicly listed events gather on one page you can share — so the people who came last time can find the next one.</p></div><a class="btn btn-ghost btn-small" id="view-profile-btn" href="#" target="_blank" rel="noopener" style="display:none;">View ↗</a></div>
+            <div class="profile-fields">
+              <div class="profile-handle-field">
+                <label for="profile-handle-input">Handle</label>
+                <div class="handle-input-row"><span class="handle-at">@</span><input type="text" id="profile-handle-input" maxlength="30" placeholder="yourname" autocomplete="off" spellcheck="false" /></div>
+                <div class="hint" id="profile-url-hint">3–30 characters: lowercase letters, numbers and underscores.</div>
+              </div>
+              <div class="profile-bio-field">
+                <label for="profile-bio-input">About you</label>
+                <textarea id="profile-bio-input" maxlength="600" placeholder="A line or two about the kind of gatherings you throw."></textarea>
+              </div>
+            </div>
+            <label class="profile-public-toggle"><input type="checkbox" id="profile-public-input" /><span><strong>Make my profile public</strong><small>Only events you've listed publicly ever appear on it. Unlisted events and drafts never do.</small></span></label>
+            <div class="profile-actions"><button type="button" class="btn btn-primary btn-small" id="save-profile-btn">Save public page</button><span class="profile-status" id="profile-status" role="status" aria-live="polite"></span></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/settings.js"></script>
+</body>
+</html>

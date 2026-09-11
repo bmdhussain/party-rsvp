@@ -77,13 +77,15 @@ async function loadEvent() {
     const res = await fetch(`/api/events/${EVENT_ID}/host`);
     if (!res.ok) throw new Error('not found');
     const data = await res.json();
-    document.getElementById('checkin-event-name').textContent = data.event.name;
-    document.getElementById('back-to-studio').href = `/host/${EVENT_ID}`;
+    // The event's name and the way back to it live in the workspace header now.
     document.getElementById('checkin-count').textContent = data.totals.checkedInCount;
     document.getElementById('checkin-total').textContent = data.totals.attendingCount;
-    document.title = `Check-in: ${data.event.name}`;
+    if (!data.event.published_at) {
+      document.getElementById('checkin-event-name').textContent =
+        'This event is still a draft — publish it so guests can reply and get tickets.';
+    }
   } catch (err) {
-    document.getElementById('checkin-event-name').textContent = "Event not found, or it isn't yours";
+    document.getElementById('checkin-event-name').textContent = "Couldn't load this event. Refresh to try again.";
   }
 }
 

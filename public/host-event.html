@@ -3,152 +3,233 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Event Dashboard</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
   <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
 </head>
 <body>
-  <div class="wrap studio-page">
-    <header class="site-header">
-      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
-      <div class="header-nav"><a href="/dashboard" class="btn btn-ghost btn-small">← Studio</a><button class="btn btn-ghost btn-small" id="logout-btn">Sign out</button></div>
-    </header>
-
-    <div class="studio-topline">
-      <div><span class="section-kicker">Invitation studio</span><h1 id="event-title">Loading…</h1><div class="studio-subtitle">A living invitation for your people.</div></div>
-      <div class="studio-top-actions"><a class="btn btn-ghost btn-small" id="checkin-link" href="#">Door check-in</a><button class="btn btn-ghost btn-small" id="refresh-btn">Refresh</button><button class="btn btn-primary btn-small" id="copy-link-btn">Copy invite link</button></div>
-    </div>
-    <nav class="studio-steps" aria-label="Invitation workflow">
-      <button type="button" class="studio-step active" data-studio-stage="choose" aria-current="step"><span>01</span><span class="studio-step-copy"><strong>Choose a look</strong><small>Start with a template or your own artwork</small></span></button>
-      <button type="button" class="studio-step" data-studio-stage="personalize"><span>02</span><span class="studio-step-copy"><strong>Personalize</strong><small>Edit the words and position them on the art</small></span></button>
-      <button type="button" class="studio-step" data-studio-stage="share"><span>03</span><span class="studio-step-copy"><strong>Share</strong><small>Save your invitation, then send the link</small></span></button>
-    </nav>
+  <div class="wrap studio-page app-page" data-initial-tab="<!--SLOT:initial-tab-->">
+    <!--HEADER-->
+    <!--WORKSPACE-->
 
     <div id="not-found" class="card" style="display:none;">
       <p>This event doesn't exist, or isn't yours.</p>
-      <a class="btn btn-primary" href="/dashboard">Back to my events</a>
+      <a class="btn btn-primary" href="/events">Back to my events</a>
     </div>
 
     <div id="dashboard" style="display:none;">
       <input type="hidden" id="share-link" />
-      <div class="studio-layout">
-        <main class="studio-main">
-          <section class="studio-canvas-card">
-             <div class="canvas-toolbar"><div><span class="section-kicker">Invitation preview</span><strong>What your guests will see</strong></div><span class="canvas-live" id="editor-status" data-state="empty"><i></i><span>Select a look to start</span></span></div>
-            <div class="invitation-stage" id="image-preview-wrap">
-              <canvas id="image-editor-canvas" width="1200" height="630" style="display:none;" aria-label="Invitation preview"></canvas>
-              <div class="invitation-stage-empty" id="image-empty"><span class="empty-art">✦</span><strong>Your invitation starts here.</strong><small>Pick a look from the studio shelf.</small></div>
-            </div>
-             <div class="canvas-caption"><span id="canvas-help">Your complete artwork stays visible inside the frame.</span><a id="public-preview-link" href="#" target="_blank" rel="noopener">View guest page ↗</a></div>
-          </section>
 
-           <section id="template-customizer" class="studio-card editor-card" style="display:none;" aria-live="polite">
-             <div class="studio-card-heading"><div><span class="section-kicker">Step 2 · Personalize</span><h2>Make it yours</h2><p>Update the essentials, then drag any line directly on the invitation.</p></div><span class="editor-ready-badge" id="editor-ready-badge">Ready to edit</span></div>
-             <div class="layer-fields">
-               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="title" checked /><span>Title</span></label><input type="text" id="layer-title" maxlength="100" placeholder="Event title" /></div>
-               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="date" checked /><span>Date</span></label><input type="text" id="layer-date" maxlength="60" placeholder="Date" /></div>
-               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="time" checked /><span>Time</span></label><input type="text" id="layer-time" maxlength="40" placeholder="Time" /></div>
-               <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="location" checked /><span>Location</span></label><input type="text" id="layer-location" maxlength="120" placeholder="Location" /></div>
-             </div>
-             <div class="layer-style-row"><label for="layer-style">Text style</label><select id="layer-style"><option value="editorial">Editorial</option><option value="modern">Modern</option><option value="playful">Playful</option></select><label for="layer-color">Color</label><input id="layer-color" type="color" value="#2f2238" title="Text color" /><span class="layer-drag-hint">Tip: drag a line on the preview to move it.</span></div>
-             <div class="customizer-actions"><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button><button type="button" class="btn btn-ghost btn-small" id="reset-layers">Reset text</button><button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original art</button><button type="button" class="btn btn-primary btn-small" id="save-custom-template">Save invitation</button></div>
-             <div class="hint">Saving creates the guest-ready invitation image and keeps your original event details unchanged.</div>
-             <div class="error-msg" id="image-error"></div>
-           </section>
+      <!-- Shown while the event is a draft: where the host is in setting it up. -->
+      <div class="setup-banner" id="setup-banner" hidden>
+        <div class="setup-banner-copy"><strong id="setup-banner-title">Finish setting up</strong><span id="setup-banner-next"></span></div>
+        <div class="setup-progress"><i id="setup-banner-bar"></i></div>
+        <a class="btn btn-primary btn-small" id="setup-banner-btn" href="#">Continue →</a>
+      </div>
 
-           <section id="lookbook-section" class="studio-card lookbook-card">
-             <div class="studio-card-heading"><div><span class="section-kicker">Step 1 · Choose a look</span><h2>Find your starting point</h2><p>Browse the collection, or upload artwork you already love.</p></div><span class="section-count" id="template-count"></span></div>
+      <!-- ============================================================ Overview -->
+      <section class="tab-panel" data-tab-panel="overview" aria-label="Overview">
+        <div class="overview-grid">
+          <div class="overview-main">
+            <section class="studio-card next-step-card" id="overview-next"></section>
+
+            <section class="studio-card">
+              <div class="studio-card-heading"><div><span class="section-kicker">Setup</span><h2>Your checklist</h2></div><span class="section-count" id="setup-count"></span></div>
+              <ol class="setup-checklist" id="setup-checklist"></ol>
+            </section>
+          </div>
+
+          <aside class="overview-side">
+            <section class="studio-card">
+              <div class="studio-card-heading compact"><div><span class="section-kicker">At a glance</span><h2>Replies</h2></div><a class="text-link" href="#" data-goto="guests">Guests →</a></div>
+              <div class="overview-stats" id="overview-stats"></div>
+            </section>
+
+            <section class="studio-card publish-card" id="publish-card">
+              <div class="studio-card-heading compact"><div><span class="section-kicker">Status</span><h2 id="publish-title">Draft</h2></div></div>
+              <p class="publish-copy" id="publish-copy">Only you can see this invitation until you publish it.</p>
+              <div class="error-msg" id="publish-error"></div>
+              <button type="button" class="btn btn-primary" id="publish-btn">Publish invitation</button>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================================ Design -->
+      <section class="tab-panel" data-tab-panel="design" aria-label="Design" hidden>
+        <nav class="studio-steps" aria-label="Invitation workflow">
+          <button type="button" class="studio-step active" data-studio-stage="choose" aria-current="step"><span>01</span><span class="studio-step-copy"><strong>Choose a look</strong><small>A template or your own artwork</small></span></button>
+          <button type="button" class="studio-step" data-studio-stage="personalize"><span>02</span><span class="studio-step-copy"><strong>Personalize</strong><small>Edit and position your words</small></span></button>
+          <button type="button" class="studio-step" data-studio-stage="share"><span>03</span><span class="studio-step-copy"><strong>Save</strong><small>Lock in the invitation</small></span></button>
+        </nav>
+
+        <div class="design-layout">
+          <div class="design-main">
+            <section class="studio-canvas-card">
+              <div class="canvas-toolbar"><div><span class="section-kicker">Invitation preview</span><strong>What your guests will see</strong></div><span class="canvas-live" id="editor-status" data-state="empty"><i></i><span>Select a look to start</span></span></div>
+              <div class="invitation-stage" id="image-preview-wrap">
+                <canvas id="image-editor-canvas" width="1200" height="630" style="display:none;" aria-label="Invitation preview"></canvas>
+                <div class="invitation-stage-empty" id="image-empty"><span class="empty-art">✦</span><strong>Your invitation starts here.</strong><small>Pick a look below.</small></div>
+              </div>
+              <div class="canvas-caption"><span id="canvas-help">Your complete artwork stays visible inside the frame.</span><a id="public-preview-link" href="#" target="_blank" rel="noopener">View guest page ↗</a></div>
+            </section>
+
+            <section id="template-customizer" class="studio-card editor-card" style="display:none;" aria-live="polite">
+              <div class="studio-card-heading"><div><span class="section-kicker">Step 2 · Personalize</span><h2>Make it yours</h2><p>Update the words, then drag any line directly on the invitation.</p></div><span class="editor-ready-badge" id="editor-ready-badge">Ready to edit</span></div>
+              <div class="layer-fields">
+                <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="title" checked /><span>Title</span></label><input type="text" id="layer-title" maxlength="100" placeholder="Event title" /></div>
+                <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="date" checked /><span>Date</span></label><input type="text" id="layer-date" maxlength="60" placeholder="Date" /></div>
+                <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="time" checked /><span>Time</span></label><input type="text" id="layer-time" maxlength="40" placeholder="Time" /></div>
+                <div class="layer-field"><label class="layer-toggle"><input type="checkbox" data-layer-toggle="location" checked /><span>Location</span></label><input type="text" id="layer-location" maxlength="120" placeholder="Location" /></div>
+              </div>
+              <div class="layer-style-row"><label for="layer-style">Text style</label><select id="layer-style"><option value="editorial">Editorial</option><option value="modern">Modern</option><option value="playful">Playful</option></select><label for="layer-color">Color</label><input id="layer-color" type="color" value="#2f2238" title="Text color" /><span class="layer-drag-hint">Tip: drag a line on the preview to move it.</span></div>
+              <div class="customizer-actions"><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="warm">Warm</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="bright">Bright</button><button type="button" class="btn btn-ghost btn-small tint-btn" data-tint="cool">Cool</button><button type="button" class="btn btn-ghost btn-small" id="reset-layers">Reset text</button><button type="button" class="btn btn-ghost btn-small" id="use-original-template">Use original art</button><button type="button" class="btn btn-primary btn-small" id="save-custom-template">Save invitation</button></div>
+              <div class="hint">Saving creates the guest-ready invitation image. Your event details stay as they are.</div>
+              <div class="error-msg" id="image-error"></div>
+            </section>
+
+            <section id="share-panel" class="studio-card share-panel">
+              <div class="studio-card-heading"><div><span class="section-kicker">Step 3 · Save</span><h2>Your invitation is ready</h2><p>Check the guest view to make sure everything feels right, then carry on.</p></div><span class="share-ready-badge" id="share-ready-badge">Not saved yet</span></div>
+              <div class="share-panel-actions"><a class="btn btn-primary btn-small" id="design-next-link" href="#">Next step →</a><a class="btn btn-ghost btn-small" id="share-open-btn" href="#" target="_blank" rel="noopener">Open guest view ↗</a><button type="button" class="btn btn-ghost btn-small" id="share-copy-btn">Copy invite link</button></div>
+              <div class="share-panel-note" id="share-panel-note">Choose a look and save your invitation to unlock sharing.</div>
+            </section>
+          </div>
+
+          <section id="lookbook-section" class="studio-card lookbook-card">
+            <div class="studio-card-heading"><div><span class="section-kicker">Step 1 · Choose a look</span><h2>Find your starting point</h2><p>Browse the collection, or upload artwork you already love.</p></div><span class="section-count" id="template-count"></span></div>
             <div class="lookbook-tools"><div class="template-filters" role="tablist" aria-label="Template filters"><button class="filter-chip active" type="button" data-filter="all">All looks</button><button class="filter-chip" type="button" data-filter="celebration">Celebrations</button><button class="filter-chip" type="button" data-filter="gathering">Gatherings</button><button class="filter-chip" type="button" data-filter="statement">Statement</button></div><input class="template-search" id="template-search" type="search" placeholder="Search the lookbook" aria-label="Search templates" /></div>
-             <div class="template-grid" id="template-grid"><div class="empty-note">Loading templates…</div></div>
-             <div class="template-source-note" id="template-source-note">Artwork sourced from <a href="https://freesvg.org/" target="_blank" rel="noopener">FreeSVG.org</a> and marked Public Domain.</div>
-             <div class="upload-row"><label for="image-upload">Upload your own artwork <span>JPEG, PNG, or WebP · 4MB max</span></label><input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" /></div>
+            <div class="template-grid" id="template-grid"><div class="empty-note">Loading templates…</div></div>
+            <div class="template-source-note" id="template-source-note">Artwork sourced from <a href="https://freesvg.org/" target="_blank" rel="noopener">FreeSVG.org</a> and marked Public Domain.</div>
+            <div class="upload-row"><label for="image-upload">Upload your own artwork <span>JPEG, PNG, or WebP · 4MB max</span></label><input type="file" id="image-upload" accept="image/jpeg,image/png,image/webp" /></div>
           </section>
+        </div>
+      </section>
 
-           <section id="share-panel" class="studio-card share-panel">
-             <div class="studio-card-heading"><div><span class="section-kicker">Step 3 · Share</span><h2>Send it into the world</h2><p>Your invitation is saved. Copy the link or open the guest view to make sure everything feels right.</p></div><span class="share-ready-badge" id="share-ready-badge">Not saved yet</span></div>
-             <div class="share-panel-actions"><button type="button" class="btn btn-primary btn-small" id="share-copy-btn">Copy invite link</button><a class="btn btn-ghost btn-small" id="share-open-btn" href="#" target="_blank" rel="noopener">Open guest view ↗</a></div>
-             <div class="share-panel-note" id="share-panel-note">Choose a look and save your invitation to unlock sharing.</div>
-           </section>
+      <!-- ============================================================ Guests -->
+      <section class="tab-panel" data-tab-panel="guests" aria-label="Guests" hidden>
+        <section class="guest-pulse studio-card">
+          <div class="studio-card-heading"><div><span class="section-kicker">Guests</span><h2>Who's coming</h2><p>Every reply, headcount and message in one place.</p></div><div class="pulse-actions"><button class="btn btn-ghost btn-small" id="email-attending-btn">Email attending</button><button class="btn btn-ghost btn-small" id="email-waitlist-btn" style="display:none;">Email waitlist</button><button class="btn btn-ghost btn-small" id="email-all-btn">Email everyone</button><a class="btn btn-ghost btn-small" id="export-csv-btn" href="#">Export CSV</a></div></div>
+          <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
+          <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile" id="stat-waitlist-tile" style="display:none;"><div class="num" id="stat-waitlist">0</div><div class="label">Waitlisted</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
+          <div class="guest-list-heading"><h3>Guest list</h3><span>Private host view</span></div>
+          <div class="table-scroll"><table class="guest-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Replied</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
+          <div class="empty-note" id="guest-empty" style="display:none;">No replies yet — <a href="#" data-goto="share">share your invitation</a> to get the first one.</div>
+        </section>
 
-           <section id="faq-editor" class="studio-card faq-editor">
-             <div class="studio-card-heading"><div><span class="section-kicker">Good to know</span><h2>Answer it once</h2><p>The questions every guest asks — parking, dress code, whether to bring anything. These appear on the invitation page.</p></div></div>
-             <div id="faq-editor-list" class="faq-editor-list"></div>
-             <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
-             <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
-           </section>
+        <section id="analytics-card" class="studio-card analytics-card">
+          <div class="studio-card-heading"><div><span class="section-kicker">How it's going</span><h2>The numbers</h2><p>Replies over time, how full you are, and who actually turned up.</p></div></div>
+          <div class="analytics-tiles" id="analytics-tiles"></div>
+          <div class="analytics-trend">
+            <div class="trend-heading"><strong>Replies over time</strong><span id="trend-range"></span></div>
+            <div class="trend-chart" id="trend-chart"></div>
+          </div>
+        </section>
+      </section>
 
-           <section id="analytics-card" class="studio-card analytics-card">
-             <div class="studio-card-heading"><div><span class="section-kicker">How it's going</span><h2>The numbers</h2><p>Replies over time, how full you are, and who actually turned up.</p></div><a class="btn btn-ghost btn-small" id="export-csv-btn" href="#">Export guest list</a></div>
-             <div class="analytics-tiles" id="analytics-tiles"></div>
-             <div class="analytics-trend">
-               <div class="trend-heading"><strong>Replies over time</strong><span id="trend-range"></span></div>
-               <div class="trend-chart" id="trend-chart"></div>
-             </div>
-           </section>
+      <!-- ============================================================ Share -->
+      <section class="tab-panel" data-tab-panel="share" aria-label="Share" hidden>
+        <div class="share-draft-notice" id="share-draft-notice" hidden>
+          <div><strong>Publish before you share.</strong><span>Until then, anyone opening the link sees "coming soon" and can't reply.</span></div>
+          <button type="button" class="btn btn-primary btn-small" data-publish>Publish now</button>
+        </div>
 
-           <section id="embed-panel" class="studio-card embed-panel">
-             <div class="studio-card-heading"><div><span class="section-kicker">Put it anywhere</span><h2>Embed the RSVP</h2><p>Drop the invitation straight onto your own site or blog. Guests reply without leaving the page.</p></div></div>
-             <div class="embed-preview-row">
-               <textarea id="embed-snippet" readonly rows="4" aria-label="Embed code"></textarea>
-               <div class="embed-snippet-actions"><button type="button" class="btn btn-primary btn-small" id="copy-embed-btn">Copy embed code</button><a class="btn btn-ghost btn-small" id="preview-embed-btn" href="#" target="_blank" rel="noopener">Preview ↗</a></div>
-             </div>
-             <div class="hint">The box resizes itself to fit its content on most sites.</div>
-           </section>
-        </main>
+        <section class="studio-card share-card">
+          <div class="studio-card-heading"><div><span class="section-kicker">Share</span><h2>Send it to your people</h2><p>One link works everywhere — WhatsApp, text, email or social. It shows your invitation as a preview card.</p></div></div>
+          <div class="share-link-row"><input type="text" id="share-url-display" readonly aria-label="Invite link" /><button type="button" class="btn btn-primary btn-small" id="share-tab-copy-btn">Copy link</button></div>
+          <div class="share-buttons">
+            <a class="btn btn-ghost share-whatsapp" id="whatsapp-share-btn" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
+            <a class="btn btn-ghost" id="email-share-btn" href="#">Share by email</a>
+            <button type="button" class="btn btn-ghost" id="native-share-btn" hidden>More options…</button>
+          </div>
+        </section>
 
-        <aside class="studio-inspector">
-          <section class="studio-card inspector-card">
-            <div class="studio-card-heading compact"><div><span class="section-kicker">Details</span><h2>Shape the moment</h2></div><span class="inspector-step">01</span></div>
+        <div class="share-grid">
+          <section class="studio-card">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">In person</span><h2>QR poster</h2><p>Print it for the venue, the office fridge or the front door.</p></div></div>
+            <a class="btn btn-ghost btn-small" id="poster-link" href="#" target="_blank" rel="noopener">Open printable poster ↗</a>
+          </section>
+          <section class="studio-card">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">Calendar</span><h2>Save the date</h2><p>Guests get this after replying; it's handy for co-hosts too.</p></div></div>
+            <a class="btn btn-ghost btn-small" id="calendar-link" href="#">Download calendar file</a>
+          </section>
+        </div>
+
+        <section id="embed-panel" class="studio-card embed-panel">
+          <div class="studio-card-heading"><div><span class="section-kicker">Your own website</span><h2>Embed the RSVP</h2><p>Drop the invitation straight onto your site or blog. Guests reply without leaving the page.</p></div></div>
+          <div class="embed-preview-row">
+            <textarea id="embed-snippet" readonly rows="4" aria-label="Embed code"></textarea>
+            <div class="embed-snippet-actions"><button type="button" class="btn btn-primary btn-small" id="copy-embed-btn">Copy embed code</button><a class="btn btn-ghost btn-small" id="preview-embed-btn" href="#" target="_blank" rel="noopener">Preview ↗</a></div>
+          </div>
+          <div class="hint">The box resizes itself to fit its content on most sites.</div>
+        </section>
+      </section>
+
+      <!-- ============================================================ Settings -->
+      <section class="tab-panel" data-tab-panel="settings" aria-label="Settings" hidden>
+        <div class="settings-grid">
+          <section class="studio-card inspector-card" id="details">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">Details</span><h2>The basics</h2></div></div>
             <form id="edit-event-form">
               <label for="edit-name">Event name</label><input type="text" id="edit-name" required maxlength="150" />
               <label for="edit-date">Date &amp; time</label><input type="datetime-local" id="edit-date" required /><div class="hint">Choose a future date and time.</div>
-              <label for="edit-location">Location</label><input type="text" id="edit-location" maxlength="300" />
+              <label for="edit-location">Location</label><input type="text" id="edit-location" maxlength="300" placeholder="Venue name or address" />
               <label for="edit-description">Your note</label><textarea id="edit-description" maxlength="1000" placeholder="Give guests a little feeling for the day."></textarea>
               <label for="edit-capacity">Guest limit</label><input type="number" id="edit-capacity" min="0" step="1" placeholder="Leave blank for no limit" /><div class="hint" id="capacity-hint">No limit — everyone who replies yes gets a spot.</div>
               <div class="error-msg" id="edit-error"></div>
-              <div class="inspector-save"><button type="submit" class="btn btn-primary btn-small">Save details</button><button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">Notify guests</button></div>
+              <div class="inspector-save"><button type="submit" class="btn btn-primary btn-small">Save details</button><button type="button" class="btn btn-ghost btn-small" id="notify-guests-btn">Email guests about changes</button></div>
+              <div class="save-status" id="details-status" role="status" aria-live="polite"></div>
             </form>
           </section>
 
-          <section class="studio-card inspector-card access-card">
-            <div class="studio-card-heading compact"><div><span class="section-kicker">Access</span><h2>Who gets in?</h2></div><span class="inspector-step">02</span></div>
-            <div class="attending-toggle">
-              <label style="margin:0;"><input type="radio" name="invite-mode" value="open" checked /><div class="opt"><strong>Open invite</strong><small>Anyone with the link</small></div></label>
-              <label style="margin:0;"><input type="radio" name="invite-mode" value="restricted" /><div class="opt"><strong>Guest list</strong><small>Only invited emails</small></div></label>
-            </div>
-            <div id="invite-list-section" style="display:none; margin-top:16px;">
-              <label for="invite-emails">Add people</label><textarea id="invite-emails" placeholder="jamie@example.com, sam@example.com"></textarea>
-              <div class="invite-add-row"><button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">Add to guest list</button><button type="button" class="btn btn-ghost btn-small" id="email-invites-btn">Email guest list</button></div><div class="error-msg" id="invite-error"></div>
-              <div id="invite-table-wrap" style="margin-top:16px;"><div class="table-scroll"><table class="guest-table"><thead><tr><th>Email</th><th>Status</th><th></th></tr></thead><tbody id="invite-table-body"></tbody></table></div><div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet.</div></div>
-            </div>
-          </section>
+          <div class="settings-column">
+            <section class="studio-card inspector-card discovery-card">
+              <div class="studio-card-heading compact"><div><span class="section-kicker">Discovery</span><h2>Who can find it?</h2></div></div>
+              <div class="attending-toggle">
+                <label style="margin:0;"><input type="radio" name="visibility" value="unlisted" checked /><div class="opt"><strong>Link only</strong><small>Invisible unless you share it</small></div></label>
+                <label style="margin:0;"><input type="radio" name="visibility" value="public" /><div class="opt"><strong>Listed publicly</strong><small>On Explore and in search</small></div></label>
+              </div>
+              <div id="category-row" style="display:none; margin-top:14px;">
+                <label for="edit-category">Category</label>
+                <select id="edit-category"><option value="">Choose one…</option></select>
+                <div class="hint">Helps people find it on Explore.</div>
+              </div>
+              <div class="discovery-status" id="discovery-status" role="status" aria-live="polite"></div>
+            </section>
 
-          <section class="studio-card inspector-card discovery-card">
-            <div class="studio-card-heading compact"><div><span class="section-kicker">Discovery</span><h2>Who can find it?</h2></div><span class="inspector-step">03</span></div>
-            <div class="attending-toggle">
-              <label style="margin:0;"><input type="radio" name="visibility" value="unlisted" checked /><div class="opt"><strong>Link only</strong><small>Invisible unless you share it</small></div></label>
-              <label style="margin:0;"><input type="radio" name="visibility" value="public" /><div class="opt"><strong>Listed publicly</strong><small>Appears on the browse page</small></div></label>
-            </div>
-            <div id="category-row" style="display:none; margin-top:14px;">
-              <label for="edit-category">Category</label>
-              <select id="edit-category"><option value="">Choose one…</option></select>
-              <div class="hint">Helps people find it when browsing.</div>
-            </div>
-            <div class="discovery-status" id="discovery-status" role="status" aria-live="polite"></div>
-          </section>
-        </aside>
+            <section class="studio-card inspector-card access-card">
+              <div class="studio-card-heading compact"><div><span class="section-kicker">Access</span><h2>Who can reply?</h2></div></div>
+              <div class="attending-toggle">
+                <label style="margin:0;"><input type="radio" name="invite-mode" value="open" checked /><div class="opt"><strong>Open invite</strong><small>Anyone with the link</small></div></label>
+                <label style="margin:0;"><input type="radio" name="invite-mode" value="restricted" /><div class="opt"><strong>Guest list</strong><small>Only invited emails</small></div></label>
+              </div>
+              <div id="invite-list-section" style="display:none; margin-top:16px;">
+                <label for="invite-emails">Add people</label><textarea id="invite-emails" placeholder="jamie@example.com, sam@example.com"></textarea>
+                <div class="invite-add-row"><button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">Add to guest list</button><button type="button" class="btn btn-ghost btn-small" id="email-invites-btn">Email guest list</button></div><div class="error-msg" id="invite-error"></div>
+                <div id="invite-table-wrap" style="margin-top:16px;"><div class="table-scroll"><table class="guest-table"><thead><tr><th>Email</th><th>Status</th><th></th></tr></thead><tbody id="invite-table-body"></tbody></table></div><div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet.</div></div>
+              </div>
+            </section>
+          </div>
         </div>
-      <section class="guest-pulse studio-card">
-        <div class="studio-card-heading"><div><span class="section-kicker">The pulse</span><h2>Feel the room fill up</h2><p>Keep an eye on replies without leaving your creative flow.</p></div><div class="pulse-actions"><button class="btn btn-ghost btn-small" id="email-attending-btn">Email attending</button><button class="btn btn-ghost btn-small" id="email-waitlist-btn" style="display:none;">Email waitlist</button><button class="btn btn-ghost btn-small" id="email-all-btn">Email everyone</button></div></div>
-        <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
-        <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile" id="stat-waitlist-tile" style="display:none;"><div class="num" id="stat-waitlist">0</div><div class="label">Waitlisted</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
-        <div class="guest-list-heading"><h3>Guest notes</h3><span>Private host view</span></div>
-        <div class="table-scroll"><table class="guest-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Submitted</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
-        <div class="empty-note" id="guest-empty" style="display:none;">No RSVPs yet — share your invitation to get the first hello.</div>
+
+        <section id="faq-editor" class="studio-card faq-editor">
+          <div class="studio-card-heading"><div><span class="section-kicker">Good to know</span><h2>Answer it once</h2><p>The questions every guest asks — parking, dress code, whether to bring anything. These appear on the invitation page.</p></div></div>
+          <div id="faq-editor-list" class="faq-editor-list"></div>
+          <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
+          <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="studio-card danger-zone">
+          <div class="studio-card-heading compact"><div><span class="section-kicker">Manage</span><h2>This event</h2></div></div>
+          <div class="danger-row"><div><strong>Host it again</strong><small>Copy this event into a new draft with the same look, details and FAQ.</small></div><button type="button" class="btn btn-ghost btn-small" id="duplicate-btn">Duplicate</button></div>
+          <div class="danger-row" id="unpublish-row" hidden><div><strong>Unpublish</strong><small>Take the invitation offline. Guests who open the link will see "coming soon" until you publish again.</small></div><button type="button" class="btn btn-ghost btn-small" id="unpublish-btn">Unpublish</button></div>
+          <div class="danger-row"><div><strong>Delete event</strong><small>Permanently removes the event, its guest list and every reply. This can't be undone.</small></div><button type="button" class="btn btn-danger btn-small" id="delete-event-btn">Delete</button></div>
+          <div class="error-msg" id="manage-error"></div>
+        </section>
       </section>
     </div>
-    <footer class="site-footer"><span>Private host space</span><a href="/dashboard">Back to dashboard</a></footer>
+
+    <!--FOOTER-->
   </div>
 
   <script src="/host-event.js"></script>

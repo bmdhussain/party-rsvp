@@ -3,21 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Door Check-in</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
   <link rel="stylesheet" href="/platform.css" />
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
+  <!--HEAD-->
 </head>
 <body>
-  <div class="wrap narrow checkin-page">
-    <header class="site-header">
-      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
-      <div class="header-nav"><a class="btn btn-ghost btn-small" id="back-to-studio" href="#">← Studio</a></div>
-    </header>
+  <div class="wrap studio-page app-page checkin-page">
+    <!--HEADER-->
+    <!--WORKSPACE-->
 
+    <div class="checkin-body">
     <div class="checkin-topline">
-      <div><span class="section-kicker">At the door</span><h1 id="checkin-event-name">Loading…</h1></div>
+      <div><span class="section-kicker">At the door</span><h2 id="checkin-event-name">Scan tickets as guests arrive</h2></div>
       <div class="checkin-counter"><strong id="checkin-count">0</strong><span>of <span id="checkin-total">0</span> arrived</span></div>
     </div>
 
@@ -53,8 +52,9 @@
       <div class="guest-list-heading"><h3>Recent arrivals</h3><span id="log-count"></span></div>
       <div id="checkin-log" class="checkin-log"><div class="empty-note">Nobody scanned yet.</div></div>
     </section>
+    </div>
 
-    <footer class="site-footer"><span>Private host view</span><a href="/dashboard">Back to dashboard</a></footer>
+    <!--FOOTER-->
   </div>
 
   <script src="/checkin.js"></script>

@@ -3,18 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>You're Invited!</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
   <link rel="stylesheet" href="/platform.css" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+  <!--HEAD-->
 </head>
 <body>
   <div class="wrap narrow">
-    <header class="site-header">
-      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
-      <nav class="header-nav"><a href="/" class="btn btn-ghost btn-small">Host an event</a></nav>
-    </header>
+    <!--HEADER-->
+
+    <!-- Only the host ever sees a draft; this reminds them guests can't yet. -->
+    <div class="draft-preview-banner" id="draft-preview-banner" hidden>
+      <div><strong>Preview — this invitation is a draft.</strong><span>Only you can see it. Guests will see "coming soon" until you publish.</span></div>
+      <a class="btn btn-primary btn-small" id="draft-manage-link" href="#">Finish &amp; publish</a>
+    </div>
+
     <div id="banner-wrap" style="display:none;">
       <div class="invite-banner">
         <img id="banner-img" alt="" />
@@ -32,15 +36,26 @@
 
     <div id="plain-hero-wrap">
       <div class="hero">
-        <h1 id="event-name">Loading party details…</h1>
+        <h1 id="event-name"><!--SLOT:event-name--></h1>
         <div class="meta" id="event-date"></div>
         <div class="meta" id="event-location"></div>
         <div class="desc" id="event-desc"></div>
       </div>
     </div>
 
-    <div class="share-row">
-      <button class="btn btn-ghost" id="copy-link-btn">Copy invite link to share</button>
+    <div class="host-line" id="host-line" hidden></div>
+
+    <!-- Shown instead of the RSVP form when an invitation isn't published yet. -->
+    <section class="card coming-soon" id="coming-soon" hidden>
+      <div class="eyebrow">Almost ready</div>
+      <h2>This invitation is coming soon.</h2>
+      <p>The host hasn't published it yet. Check back a little later — the link you have will work once it's live.</p>
+      <a class="btn btn-ghost btn-small" href="/explore">Explore other events</a>
+    </section>
+
+    <div class="share-row" id="share-row">
+      <button class="btn btn-ghost" id="copy-link-btn">Copy invite link</button>
+      <a class="btn btn-ghost share-whatsapp" id="whatsapp-btn" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
       <a class="btn btn-ghost" id="add-calendar-btn" href="#">Add to calendar</a>
     </div>
 
@@ -101,6 +116,8 @@
           <a class="btn btn-primary btn-small" id="success-ticket-btn" href="#">View your ticket</a>
           <a class="btn btn-ghost btn-small" id="success-calendar-btn" href="#">Add to calendar</a>
         </div>
+        <!-- The moment a guest has just enjoyed replying is when hosting their own feels easy. -->
+        <a class="host-your-own" href="/events/new">Hosting something yourself? <strong>Make an invitation like this in minutes →</strong></a>
       </div>
     </div>
 
@@ -131,8 +148,12 @@
       <div id="faq-list" class="faq-list"></div>
     </section>
 
-    <div class="footer-link"><a href="/">Want to host your own event?</a></div>
-    <footer class="site-footer"><span>Made for meaningful gatherings.</span><span class="footer-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></footer>
+    <section class="more-from-host" id="more-from-host" hidden>
+      <div class="section-heading"><div><span class="section-kicker">From the same host</span><h2 id="more-from-host-title">More coming up</h2></div><a class="text-link" id="more-from-host-link" href="/explore">See all →</a></div>
+      <div class="event-collection browse-grid" id="more-from-host-list"></div>
+    </section>
+
+    <!--FOOTER-->
   </div>
 
   <script src="/event.js"></script>

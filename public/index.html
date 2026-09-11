@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RSVPfor — Make the moment</title>
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
 </head>
 <body>
   <div class="wrap home-page">
-    <header class="site-header">
-      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
-      <nav class="header-nav home-nav"><a href="#party-ideas">Party ideas</a><a href="#how-it-works">How it works</a><a class="btn btn-dark btn-small" href="#start-planning">Create an event <span>↗</span></a></nav>
-    </header>
+    <!--HEADER-->
 
     <main>
       <section class="home-hero">
@@ -19,7 +18,7 @@
           <div class="eyebrow">Make room for good news</div>
           <h1>The easiest way to get everyone in the same room.</h1>
           <p>Make an invitation that feels like your party, share one beautiful link, and watch the yeses roll in.</p>
-          <div class="home-hero-actions"><a class="btn btn-dark" href="#party-ideas">Choose your occasion <span>↓</span></a><a class="text-link" href="#how-it-works">See how it works <span>↗</span></a></div>
+          <div class="home-hero-actions"><a class="btn btn-dark" href="/events/new">Create your invitation <span>→</span></a><a class="text-link" href="/explore">Explore events <span>↗</span></a></div>
           <div class="hero-proof"><span class="proof-avatars"><i>J</i><i>M</i><i>A</i><i>+</i></span><span><strong>Made for the people you love</strong><small>Private by default · effortless to share</small></span></div>
         </div>
         <div class="party-scene" aria-label="A sample invitation for a Saturday supper">
@@ -37,92 +36,63 @@
         </div>
       </section>
 
+      <!--SLOT:happening-soon-->
+
       <section class="occasion-section" id="party-ideas">
         <div class="section-heading home-section-heading"><div><span class="section-kicker">Start with the occasion</span><h2>What are we celebrating?</h2></div><span class="section-note">Pick a vibe. We’ll handle the rest.</span></div>
         <div class="occasion-grid">
-          <button class="occasion-card occasion-coral" type="button" data-occasion="Birthday"><span class="occasion-icon">✦</span><strong>Birthday</strong><small>Make it a big one</small><span class="occasion-arrow">↗</span></button>
-          <button class="occasion-card occasion-yellow" type="button" data-occasion="Dinner party"><span class="occasion-icon">◒</span><strong>Dinner party</strong><small>Pull up a chair</small><span class="occasion-arrow">↗</span></button>
-          <button class="occasion-card occasion-teal" type="button" data-occasion="Baby shower"><span class="occasion-icon">○</span><strong>Baby shower</strong><small>Something sweet</small><span class="occasion-arrow">↗</span></button>
-          <button class="occasion-card occasion-plum" type="button" data-occasion="Wedding"><span class="occasion-icon">∞</span><strong>Wedding</strong><small>The good kind of forever</small><span class="occasion-arrow">↗</span></button>
-          <button class="occasion-card occasion-lilac" type="button" data-occasion="Just because"><span class="occasion-icon">✷</span><strong>Just because</strong><small>No reason needed</small><span class="occasion-arrow">↗</span></button>
+          <a class="occasion-card occasion-coral" href="/events/new?occasion=birthday"><span class="occasion-icon">✦</span><strong>Birthday</strong><small>Make it a big one</small><span class="occasion-arrow">↗</span></a>
+          <a class="occasion-card occasion-yellow" href="/events/new?occasion=dinner"><span class="occasion-icon">◒</span><strong>Dinner party</strong><small>Pull up a chair</small><span class="occasion-arrow">↗</span></a>
+          <a class="occasion-card occasion-teal" href="/events/new?occasion=party"><span class="occasion-icon">○</span><strong>Baby shower</strong><small>Something sweet</small><span class="occasion-arrow">↗</span></a>
+          <a class="occasion-card occasion-plum" href="/events/new?occasion=wedding"><span class="occasion-icon">∞</span><strong>Wedding</strong><small>The good kind of forever</small><span class="occasion-arrow">↗</span></a>
+          <a class="occasion-card occasion-lilac" href="/events/new?occasion=other"><span class="occasion-icon">✷</span><strong>Just because</strong><small>No reason needed</small><span class="occasion-arrow">↗</span></a>
         </div>
       </section>
 
       <section class="how-section" id="how-it-works">
         <div class="section-heading home-section-heading"><div><span class="section-kicker">A little party magic</span><h2>From “we should” to “see you there.”</h2></div></div>
         <div class="how-grid">
-          <div class="how-step"><span class="how-number">01</span><div class="how-line"></div><h3>Pick a starting point.</h3><p>Choose an occasion and give your gathering a name. You’re already halfway there.</p></div>
-          <div class="how-step"><span class="how-number">02</span><div class="how-line"></div><h3>Make it yours.</h3><p>Browse joyful invitation looks, add the details, and make the mood feel unmistakably you.</p></div>
-          <div class="how-step"><span class="how-number">03</span><div class="how-line"></div><h3>Send one lovely link.</h3><p>See replies in one place, keep guests in the loop, and spend less time chasing yeses.</p></div>
+          <div class="how-step"><span class="how-number">01</span><div class="how-line"></div><h3>Add the basics.</h3><p>A name, a date and a place. It saves as you go, so you can finish later from any device.</p></div>
+          <div class="how-step"><span class="how-number">02</span><div class="how-line"></div><h3>Make it yours.</h3><p>Pick an invitation look, put your words on it, and set a guest limit or answer the usual questions up front.</p></div>
+          <div class="how-step"><span class="how-number">03</span><div class="how-line"></div><h3>Publish and share.</h3><p>One link for WhatsApp, email or your own website. Replies, tickets and door check-in all in one place.</p></div>
         </div>
       </section>
 
-      <section class="home-cta" id="start-planning">
-        <div class="cta-copy"><span class="section-kicker">Ready when you are</span><h2><span id="chosen-occasion">Your next</span> gathering starts here.</h2><p>Sign in to create your invitation. It takes less time than deciding what to bring.</p></div>
+      <section class="home-cta <!--SLOT:home-cta-state-->" id="start-planning">
+        <div class="cta-copy"><span class="section-kicker">Ready when you are</span><h2>Your next gathering starts here.</h2><p>It takes less time than deciding what to bring.</p></div>
         <div class="card login-card" id="login-card">
-          <div class="eyebrow">For the host</div><h3>Open the door to your people.</h3>
-          <div id="provider-buttons"><div class="empty-note">Loading sign-in options…</div></div>
-          <div class="error-msg" id="login-error"></div>
-          <small class="login-privacy">Your event stays private until you share it.</small>
+          <div class="signed-out-only">
+            <div class="eyebrow">For the host</div><h3>Open the door to your people.</h3>
+            <div id="provider-buttons"><div class="empty-note">Loading sign-in options…</div></div>
+            <small class="login-privacy">Your event stays private until you publish it.</small>
+          </div>
+          <div class="signed-in-only">
+            <div class="eyebrow">Welcome back</div><h3>Pick up where you left off.</h3>
+            <a class="btn btn-primary" href="/dashboard">Go to your dashboard</a>
+            <a class="btn btn-ghost" href="/events/new">Create a new event</a>
+          </div>
         </div>
       </section>
     </main>
-    <footer class="site-footer"><span><span class="footer-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span> · make room for good news.</span><span>© <span class="footer-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></span></footer>
+    <!--FOOTER-->
   </div>
 
   <script>
-    document.querySelectorAll('[data-occasion]').forEach((button) => {
-      button.addEventListener('click', () => {
-        const occasion = button.dataset.occasion;
-        document.getElementById('chosen-occasion').textContent = occasion === 'Just because' ? 'Your next' : `Your ${occasion.toLowerCase()}`;
-        document.getElementById('start-planning').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        document.getElementById('login-card').classList.add('is-focused');
-        setTimeout(() => document.getElementById('login-card').classList.remove('is-focused'), 1200);
-      });
-    });
-
-    async function init() {
-      try {
-        const meRes = await fetch('/api/me');
-        const me = await meRes.json();
-        if (me.user) {
-          window.location.href = '/dashboard';
-          return;
-        }
-      } catch (err) {
-        // ignore, show login options
-      }
-
-      if (new URLSearchParams(window.location.search).get('login') === 'failed') {
-        const err = document.getElementById('login-error');
-        err.textContent = 'Sign-in was cancelled or failed. Please try again.';
-        err.style.display = 'block';
-      }
-
+    (async function () {
       const container = document.getElementById('provider-buttons');
+      if (!container || document.querySelector('.home-cta.is-signed-in')) return;
       try {
-        const res = await fetch('/api/auth/providers');
-        const providers = await res.json();
+        const providers = await (await fetch('/api/auth/providers')).json();
+        // Signing in from the home page goes straight into creating an event.
+        const next = '?next=' + encodeURIComponent('/events/new');
         const buttons = [];
-        if (providers.google) {
-          buttons.push(
-            '<a class="btn provider-btn google" href="/auth/google"><span class="icon">🔵</span> Continue with Google</a>'
-          );
-        }
-        if (providers.facebook) {
-          buttons.push(
-            '<a class="btn provider-btn facebook" href="/auth/facebook"><span class="icon">📘</span> Continue with Facebook</a>'
-          );
-        }
-        container.innerHTML = buttons.length
-          ? buttons.join('')
-          : '<div class="empty-note">Sign-in isn\'t configured yet. The site owner needs to add Google or Facebook login credentials.</div>';
+        if (providers.google) buttons.push('<a class="btn provider-btn google" href="/auth/google' + next + '"><span class="icon">G</span> Continue with Google</a>');
+        if (providers.facebook) buttons.push('<a class="btn provider-btn facebook" href="/auth/facebook' + next + '"><span class="icon">f</span> Continue with Facebook</a>');
+        container.innerHTML = buttons.length ? buttons.join('') : '<div class="empty-note">Sign-in isn\'t configured yet.</div>';
       } catch (err) {
         container.innerHTML = '<div class="empty-note">Couldn\'t load sign-in options.</div>';
       }
-    }
-
-    init();
+    })();
   </script>
 </body>
 </html>

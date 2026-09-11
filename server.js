@@ -20,6 +20,8 @@ const {
   buildBrowseQuery,
 } = require('./lib/discovery');
 const { toCsv, csvFilename } = require('./lib/csv');
+const { setupProgress, publishBlocker } = require('./lib/setup');
+const { registerPages } = require('./lib/pages');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -59,6 +61,14 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json());
 
+// The Replit workspace (*.replit.dev) is a development copy: tell every crawler
+// to keep out of it entirely, images and API responses included, so it never
+// competes with the real site in search results.
+app.use((req, res, next) => {
+  if (/\.replit\.dev$/i.test(req.hostname || '')) res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
+});
+
 const PgSession = pgSessionFactory(session);
 app.use(
   session({
@@ -82,8 +92,20 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// Only ever redirect back to a path on this site. A `next` value is
+// visitor-controlled, so "//evil.example" or "https://…" would otherwise turn
+// the login page into an open redirect.
+function safeNext(value) {
+  if (typeof value !== 'string') return null;
+  if (!value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return null;
+  if (value.startsWith('/auth/') || value.startsWith('/login')) return null;
+  return value.slice(0, 500);
+}
+
+// Sends a signed-out visitor to sign in, then back to exactly where they were
+// heading — so "Create event" or a bookmarked event page picks up afterwards.
 function requirePageAuth(req, res, next) {
-  if (!req.user) return res.redirect('/');
+  if (!req.user) return res.redirect(`/login?next=${encodeURIComponent(req.originalUrl)}`);
   next();
 }
 
@@ -221,21 +243,37 @@ app.post('/auth/logout', (req, res) => {
   });
 });
 
+// Remember where the visitor was heading before they leave for the provider.
+function rememberNext(req, res, next) {
+  const target = safeNext(req.query.next);
+  if (target) req.session.returnTo = target;
+  next();
+}
+
+function finishLogin(req, res) {
+  const target = safeNext(req.session.returnTo) || '/dashboard';
+  delete req.session.returnTo;
+  res.redirect(target);
+}
+
+// keepSessionInfo carries returnTo across the session regeneration passport
+// does at login (its defence against session fixation), which would
+// otherwise wipe it.
 if (providers.google) {
-  app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get('/auth/google', rememberNext, passport.authenticate('google', { scope: ['profile', 'email'] }));
   app.get(
     '/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/?login=failed' }),
-    (req, res) => res.redirect('/dashboard')
+    passport.authenticate('google', { failureRedirect: '/login?failed=1', keepSessionInfo: true }),
+    finishLogin
   );
 }
 
 if (providers.facebook) {
-  app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }));
+  app.get('/auth/facebook', rememberNext, passport.authenticate('facebook', { scope: ['email'] }));
   app.get(
     '/auth/facebook/callback',
-    passport.authenticate('facebook', { failureRedirect: '/?login=failed' }),
-    (req, res) => res.redirect('/dashboard')
+    passport.authenticate('facebook', { failureRedirect: '/login?failed=1', keepSessionInfo: true }),
+    finishLogin
   );
 }
 
@@ -262,6 +300,8 @@ app.get('/api/browse', async (req, res) => {
   const { sql, params } = buildBrowseQuery({
     q: req.query.q,
     category: req.query.category,
+    when: req.query.when,
+    where: req.query.where,
     limit: req.query.limit,
     offset: req.query.offset,
   });
@@ -304,7 +344,7 @@ app.get('/api/hosts/:handle', async (req, res) => {
             COALESCE(SUM(CASE WHEN r.status = 'confirmed' THEN r.adults + r.kids END), 0)::int AS going
      FROM events e
      LEFT JOIN rsvps r ON r.event_id = e.id
-     WHERE e.owner_id = $1 AND e.visibility = 'public'
+     WHERE e.owner_id = $1 AND e.visibility = 'public' AND e.published_at IS NOT NULL
      GROUP BY e.id, e.slug, e.name, e.event_date, e.location, e.category, e.capacity,
               e.image_data, e.template_id
      ORDER BY e.event_date DESC NULLS LAST`,
@@ -398,24 +438,45 @@ app.put('/api/me/profile', requireAuth, verifySameOrigin, async (req, res) => {
   }
 });
 
-app.get('/api/events', requireAuth, async (req, res) => {
+// The host's events with everything the dashboard and event list need to show
+// progress and state without a second round trip per card.
+async function listHostEvents(req, ownerId) {
   const { rows } = await pool.query(
-    `SELECT id, slug, name, event_date, location, created_at,
-            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
-     FROM events WHERE owner_id = $1 ORDER BY created_at DESC`,
-    [req.user.id]
+    `SELECT e.id, e.slug, e.name, e.event_date, e.location, e.created_at, e.published_at,
+            e.visibility, e.capacity,
+            (e.image_data IS NOT NULL OR e.template_id IS NOT NULL) AS has_image,
+            count(r.id)::int AS rsvp_count,
+            COALESCE(SUM(CASE WHEN r.status = 'confirmed' THEN r.adults + r.kids END), 0)::int AS going
+     FROM events e
+     LEFT JOIN rsvps r ON r.event_id = e.id
+     WHERE e.owner_id = $1
+     GROUP BY e.id
+     ORDER BY e.created_at DESC`,
+    [ownerId]
   );
-  res.json(
-    rows.map((r) => ({
-      ...r,
-      shareUrl: makeShareUrl(req, r.slug),
-      imageUrl: makeImageUrl(req, r.slug, r.has_image),
-    }))
-  );
+  const now = Date.now();
+  return rows.map((r) => ({
+    ...r,
+    // One word for where the event is in its life, so the list can group it.
+    phase: !r.published_at
+      ? 'draft'
+      : r.event_date && new Date(r.event_date).getTime() < now
+        ? 'past'
+        : 'upcoming',
+    setup: setupProgress(r),
+    shareUrl: makeShareUrl(req, r.slug),
+    imageUrl: makeImageUrl(req, r.slug, r.has_image),
+  }));
+}
+
+app.get('/api/events', requireAuth, async (req, res) => {
+  res.json(await listHostEvents(req, req.user.id));
 });
 
+// New events start as drafts: the invitation isn't reachable by guests until
+// the host publishes it.
 app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
-  const { name, date, location, description } = req.body || {};
+  const { name, date, location, description, category } = req.body || {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Event name is required.' });
   }
@@ -425,8 +486,8 @@ app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
   const eventDate = date ? new Date(date) : null;
 
   await pool.query(
-    `INSERT INTO events (id, slug, owner_id, name, event_date, location, description)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    `INSERT INTO events (id, slug, owner_id, name, event_date, location, description, category)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       id,
       slug,
@@ -435,10 +496,86 @@ app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
       eventDate && !Number.isNaN(eventDate.getTime()) ? eventDate : null,
       (location || '').trim().slice(0, 300),
       (description || '').trim().slice(0, 1000),
+      normalizeCategory(category),
     ]
   );
 
   res.json({ id, slug, shareUrl: makeShareUrl(req, slug) });
+});
+
+app.post('/api/events/:eventId/publish', requireAuth, verifySameOrigin, async (req, res) => {
+  const publish = req.body?.published !== false;
+  const { rows } = await pool.query(
+    'SELECT id, name, event_date, published_at FROM events WHERE id = $1 AND owner_id = $2',
+    [req.params.eventId, req.user.id]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
+
+  if (publish) {
+    const blocker = publishBlocker(rows[0]);
+    if (blocker) return res.status(400).json({ error: blocker });
+  }
+
+  // Re-publishing keeps the original publish time rather than bumping it.
+  const { rows: updated } = await pool.query(
+    `UPDATE events SET published_at = CASE WHEN $1 THEN COALESCE(published_at, now()) ELSE NULL END
+     WHERE id = $2 RETURNING published_at`,
+    [publish, req.params.eventId]
+  );
+  res.json({ ok: true, published: Boolean(updated[0].published_at), publishedAt: updated[0].published_at });
+});
+
+// "Host it again": a fresh draft with everything carried over except the
+// date (which the host must pick) and the guests. FAQ entries come too, since
+// "is there parking?" rarely changes between one year's party and the next.
+app.post('/api/events/:eventId/duplicate', requireAuth, verifySameOrigin, async (req, res) => {
+  const newId = crypto.randomUUID();
+  const newSlug = crypto.randomBytes(6).toString('base64url');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rowCount } = await client.query(
+      `INSERT INTO events (id, slug, owner_id, name, event_date, location, description,
+                           image_data, image_mime, og_image_data, template_id, invite_mode,
+                           capacity, visibility, category, published_at)
+       SELECT $1, $2, owner_id, name, NULL, location, description,
+              image_data, image_mime, og_image_data, template_id, invite_mode,
+              capacity, visibility, category, NULL
+       FROM events WHERE id = $3 AND owner_id = $4`,
+      [newId, newSlug, req.params.eventId, req.user.id]
+    );
+    if (!rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    await client.query(
+      `INSERT INTO event_faqs (id, event_id, question, answer, sort_order)
+       SELECT gen_random_uuid(), $1, question, answer, sort_order FROM event_faqs WHERE event_id = $2`,
+      [newId, req.params.eventId]
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Duplicating event failed:', err);
+    return res.status(500).json({ error: 'Could not copy this event.' });
+  } finally {
+    client.release();
+  }
+  res.json({ ok: true, id: newId, slug: newSlug });
+});
+
+// Recent replies across all the host's events — the "something happened while
+// you were away" feed that brings them back to the dashboard.
+app.get('/api/me/activity', requireAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT r.name, r.status, r.adults, r.kids, r.created_at, e.id AS event_id, e.name AS event_name
+     FROM rsvps r JOIN events e ON e.id = r.event_id
+     WHERE e.owner_id = $1
+     ORDER BY r.created_at DESC
+     LIMIT 8`,
+    [req.user.id]
+  );
+  res.json(rows);
 });
 
 app.patch('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, res) => {
@@ -504,10 +641,39 @@ app.post(
   async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No image uploaded.' });
 
+    // A new image makes any existing preview copy stale, so it's cleared here;
+    // the studio uploads a fresh one straight after saving.
     const { rowCount } = await pool.query(
-      `UPDATE events SET image_data = $1, image_mime = $2, template_id = NULL
+      `UPDATE events SET image_data = $1, image_mime = $2, template_id = NULL, og_image_data = NULL
        WHERE id = $3 AND owner_id = $4`,
       [req.file.buffer, req.file.mimetype, req.params.eventId, req.user.id]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
+    res.json({ ok: true });
+  }
+);
+
+// The small link-preview copy. Capped well under the main upload limit: if the
+// browser can't get it this small, a preview isn't worth sending.
+const ogUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 450 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'image/jpeg') return cb(new Error('Preview images must be JPEG.'));
+    cb(null, true);
+  },
+});
+
+app.post(
+  '/api/events/:eventId/og-image',
+  requireAuth,
+  verifySameOrigin,
+  ogUpload.single('image'),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No image uploaded.' });
+    const { rowCount } = await pool.query(
+      'UPDATE events SET og_image_data = $1 WHERE id = $2 AND owner_id = $3',
+      [req.file.buffer, req.params.eventId, req.user.id]
     );
     if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
     res.json({ ok: true });
@@ -519,7 +685,7 @@ app.post('/api/events/:eventId/template', requireAuth, verifySameOrigin, async (
   if (!template) return res.status(400).json({ error: 'Unknown template.' });
 
   const { rowCount } = await pool.query(
-    `UPDATE events SET template_id = $1, image_data = NULL, image_mime = NULL
+    `UPDATE events SET template_id = $1, image_data = NULL, image_mime = NULL, og_image_data = NULL
      WHERE id = $2 AND owner_id = $3`,
     [template.id, req.params.eventId, req.user.id]
   );
@@ -539,8 +705,9 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
     `SELECT id, slug, owner_id, name, event_date, location, description, created_at, invite_mode,
-            capacity, visibility, category,
-            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
+            capacity, visibility, category, published_at,
+            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image,
+            (SELECT count(*)::int FROM event_faqs f WHERE f.event_id = events.id) AS faq_count
      FROM events WHERE id = $1 AND owner_id = $2`,
     [req.params.eventId, req.user.id]
   );
@@ -596,6 +763,8 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
       imageUrl: makeImageUrl(req, eventRows[0].slug, eventRows[0].has_image),
       spotsLeft: capacity === null ? null : Math.max(0, capacity - (totals.adults + totals.kids)),
     },
+    setup: setupProgress({ ...eventRows[0], rsvp_count: rsvps.length }),
+    publishBlocker: publishBlocker(eventRows[0]),
     rsvps,
     totals,
   });
@@ -1028,15 +1197,31 @@ app.post('/api/events/:eventId/checkin/undo', requireAuth, verifySameOrigin, asy
 
 // --- Public event + RSVP (no auth — anyone with the link) ---
 
+// A draft is visible only to its host, who is previewing it. Everyone else is
+// told it isn't published yet — which reveals nothing, since the slug is
+// random and they already hold the link.
+function canView(event, req) {
+  return Boolean(event.published_at) || Boolean(req.user && req.user.id === event.owner_id);
+}
+
+const NOT_PUBLISHED = { error: "This invitation isn't published yet.", draft: true };
+
 app.get('/api/events/:slug/public', async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT id, name, event_date, location, description, invite_mode, capacity,
-            (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image
-     FROM events WHERE slug = $1`,
+    `SELECT e.id, e.slug, e.owner_id, e.name, e.event_date, e.location, e.description, e.invite_mode,
+            e.capacity, e.published_at, e.visibility,
+            (e.image_data IS NOT NULL OR e.template_id IS NOT NULL) AS has_image,
+            u.name AS host_name, u.handle AS host_handle, u.public_profile AS host_public
+     FROM events e JOIN users u ON u.id = e.owner_id
+     WHERE e.slug = $1`,
     [req.params.slug]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
-  const { id, has_image, invite_mode, capacity, ...event } = rows[0];
+  if (!canView(rows[0], req)) return res.status(404).json(NOT_PUBLISHED);
+  const {
+    id, owner_id, has_image, invite_mode, capacity, published_at, visibility,
+    host_name, host_handle, host_public, ...event
+  } = rows[0];
 
   const taken = await confirmedHeadcount(pool, id);
   const { rows: faqs } = await pool.query(
@@ -1049,21 +1234,56 @@ app.get('/api/events/:slug/public', async (req, res) => {
     ...event,
     inviteOnly: invite_mode === 'restricted',
     imageUrl: makeImageUrl(req, req.params.slug, has_image),
+    shareUrl: makeShareUrl(req, req.params.slug),
     capacity,
     goingCount: taken,
     spotsLeft: capacity === null ? null : Math.max(0, capacity - taken),
     isFull: capacity !== null && taken >= capacity,
     faqs,
+    draft: !published_at,
+    isHost: Boolean(req.user && req.user.id === owner_id),
+    // Only the host gets the internal ID — it's what links their preview back
+    // to the event's workspace.
+    ...(req.user && req.user.id === owner_id ? { eventId: id } : {}),
+    // The host is only named when they've chosen a public profile; otherwise
+    // an invitation says nothing about who sent it beyond what they wrote.
+    host: host_public && host_handle ? { name: host_name, handle: host_handle } : null,
   });
+});
+
+// Other upcoming public events by the same host, for the bottom of an event
+// page. Only ever public, published events — never the host's unlisted ones.
+app.get('/api/events/:slug/more', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT o.slug, o.name, o.event_date, o.location,
+            (o.image_data IS NOT NULL OR o.template_id IS NOT NULL) AS has_image
+     FROM events e
+     JOIN events o ON o.owner_id = e.owner_id AND o.id <> e.id
+     WHERE e.slug = $1 AND o.published_at IS NOT NULL AND o.visibility = 'public'
+       AND o.event_date > now()
+     ORDER BY o.event_date ASC
+     LIMIT 3`,
+    [req.params.slug]
+  );
+  res.json(
+    rows.map((r) => ({
+      slug: r.slug,
+      name: r.name,
+      event_date: r.event_date,
+      location: r.location,
+      shareUrl: makeShareUrl(req, r.slug),
+      imageUrl: makeImageUrl(req, r.slug, r.has_image),
+    }))
+  );
 });
 
 app.get('/api/events/:slug/image', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT image_data, image_mime, template_id FROM events WHERE slug = $1',
+    'SELECT image_data, image_mime, template_id, published_at, owner_id FROM events WHERE slug = $1',
     [req.params.slug]
   );
   const event = rows[0];
-  if (!event) return res.status(404).end();
+  if (!event || !canView(event, req)) return res.status(404).end();
 
   if (event.image_data) {
     res.set('Content-Type', event.image_mime || 'application/octet-stream');
@@ -1079,10 +1299,12 @@ app.get('/api/events/:slug/image', async (req, res) => {
 
 app.get('/api/events/:slug/calendar.ics', async (req, res) => {
   const { rows } = await pool.query(
-    'SELECT id, slug, name, event_date, location, description FROM events WHERE slug = $1',
+    `SELECT id, slug, name, event_date, location, description, published_at, owner_id
+     FROM events WHERE slug = $1`,
     [req.params.slug]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Event not found.' });
+  if (!canView(rows[0], req)) return res.status(404).json(NOT_PUBLISHED);
 
   const ics = buildEventIcs({
     event: rows[0],
@@ -1141,10 +1363,12 @@ app.get('/api/tickets/:token', async (req, res) => {
 });
 
 app.get('/api/events/:slug/comments', async (req, res) => {
-  const { rows: eventRows } = await pool.query('SELECT id FROM events WHERE slug = $1', [
-    req.params.slug,
-  ]);
+  const { rows: eventRows } = await pool.query(
+    'SELECT id, published_at, owner_id FROM events WHERE slug = $1',
+    [req.params.slug]
+  );
   if (!eventRows[0]) return res.status(404).json({ error: 'Event not found.' });
+  if (!canView(eventRows[0], req)) return res.status(404).json(NOT_PUBLISHED);
 
   const { rows } = await pool.query(
     `SELECT name, attending, status, comment, created_at FROM rsvps
@@ -1185,7 +1409,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     // FOR UPDATE serialises RSVPs for this event, so two guests arriving at the
     // same moment can't both be told they got the last spot.
     const { rows: eventRows } = await client.query(
-      `SELECT id, slug, name, event_date, location, description, invite_mode, capacity
+      `SELECT id, slug, name, event_date, location, description, invite_mode, capacity, published_at
        FROM events WHERE slug = $1 FOR UPDATE`,
       [req.params.slug]
     );
@@ -1194,6 +1418,12 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
       return res.status(404).json({ error: 'Event not found.' });
     }
     const event = eventRows[0];
+    // Refused even for the host: a reply to a draft would be a guest nobody
+    // can see yet, attached to details that may still change.
+    if (!event.published_at) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: "This invitation isn't published yet, so it can't take replies." });
+    }
 
     if (event.invite_mode === 'restricted') {
       const { rows: inviteRows } = await client.query(
@@ -1321,28 +1551,16 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
 
 // --- Pages ---
 
-app.get('/dashboard', requirePageAuth, (req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'))
-);
-app.get('/host/:eventId/checkin', requirePageAuth, (req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'checkin.html'))
-);
-app.get('/host/:eventId', requirePageAuth, (req, res) =>
-  res.sendFile(path.join(__dirname, 'public', 'host-event.html'))
-);
-app.get('/e/:slug', (req, res) => res.sendFile(path.join(__dirname, 'public', 'event.html')));
-app.get('/t/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ticket.html')));
-app.get('/browse', (req, res) => res.sendFile(path.join(__dirname, 'public', 'browse.html')));
-app.get('/@:handle', (req, res) => res.sendFile(path.join(__dirname, 'public', 'profile.html')));
+registerPages(app, { pool, requirePageAuth, safeNext, makeShareUrl, makeImageUrl, findTemplate });
 
-// The whole point of the embed is to run inside someone else's page, so this one
-// route opts into being framed anywhere. Nothing else on the site does.
-app.get('/embed/:slug', (req, res) => {
-  res.set('Content-Security-Policy', 'frame-ancestors *');
-  res.sendFile(path.join(__dirname, 'public', 'embed.html'));
+// Page templates are only ever served through the routes above, which fill
+// them in. Served raw they'd show placeholder comments and skip the auth check.
+app.use((req, res, next) => {
+  if (/\.html?$/i.test(req.path)) return res.status(404).end();
+  next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Catches multer errors (bad file type, file too large) from anywhere above.
 app.use((err, req, res, next) => {

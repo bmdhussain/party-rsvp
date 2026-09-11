@@ -1,4 +1,49 @@
-const EVENT_ID = window.location.pathname.split('/').filter(Boolean).pop();
+// /host/:eventId[/:tab] — the ID is always the second segment. (Taking the last
+// segment would read "guests" as the event ID once tabs have their own URLs.)
+const EVENT_ID = window.location.pathname.split('/').filter(Boolean)[1];
+const TAB_KEYS = ['overview', 'design', 'guests', 'share', 'settings'];
+
+function tabFromPath() {
+  const segment = window.location.pathname.split('/').filter(Boolean)[2];
+  return TAB_KEYS.includes(segment) ? segment : 'overview';
+}
+
+function tabUrl(tab) {
+  return tab === 'overview' ? `/host/${EVENT_ID}` : `/host/${EVENT_ID}/${tab}`;
+}
+
+// Tabs switch in place, but every tab has a real URL: pushState keeps the
+// address bar honest, so back/forward, reload and bookmarks all land on the
+// same tab.
+function showTab(tab, { push = false } = {}) {
+  const target = TAB_KEYS.includes(tab) ? tab : 'overview';
+  document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== target;
+  });
+  document.querySelectorAll('.workspace-tab[data-tab]').forEach((link) => {
+    const active = link.dataset.tab === target;
+    link.classList.toggle('is-active', active);
+    if (active) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+  if (push && window.location.pathname !== tabUrl(target)) {
+    window.history.pushState({ tab: target }, '', tabUrl(target));
+  }
+  // The invitation canvas measures itself; it needs a redraw once visible.
+  if (target === 'design' && typeof drawEditor === 'function' && editorState.backgroundImage) drawEditor();
+}
+
+document.addEventListener('click', (e) => {
+  const tabLink = e.target.closest('.workspace-tab[data-tab], [data-goto]');
+  if (!tabLink) return;
+  // Let modified clicks (new tab, new window) behave like normal links.
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+  e.preventDefault();
+  showTab(tabLink.dataset.tab || tabLink.dataset.goto, { push: true });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+window.addEventListener('popstate', () => showTab(tabFromPath()));
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -46,14 +91,17 @@ function setStudioStage(stage, { scroll = false } = {}) {
   const shareBadge = document.getElementById('share-ready-badge');
   const shareNote = document.getElementById('share-panel-note');
   const hasSavedInvitation = Boolean(lastData?.event?.imageUrl);
+  const isLive = Boolean(lastData?.event?.published_at);
   if (shareBadge) {
-    shareBadge.textContent = hasSavedInvitation ? 'Ready to share' : 'Not saved yet';
+    shareBadge.textContent = hasSavedInvitation ? 'Saved' : 'Not saved yet';
     shareBadge.classList.toggle('is-ready', hasSavedInvitation);
   }
   if (shareNote) {
-    shareNote.textContent = hasSavedInvitation
-      ? 'Your guest page is live. Share the link whenever you are ready.'
-      : 'Choose a look and save your invitation to unlock sharing.';
+    shareNote.textContent = !hasSavedInvitation
+      ? 'Choose a look and save your invitation to carry on.'
+      : isLive
+        ? 'Your invitation is live. Changes you save here show up for guests straight away.'
+        : 'Saved. The invitation is still a private draft — publish it when you are ready.';
   }
 
   if (!scroll) return;
@@ -263,7 +311,7 @@ async function loadDashboard() {
   try {
     const res = await fetch(`/api/events/${EVENT_ID}/host`);
     if (res.status === 401) {
-      window.location.href = '/';
+      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
     if (!res.ok) {
@@ -293,10 +341,159 @@ function futureDateTimeMinimum() {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// --- Overview, setup and status ---
+
+function renderStatus(data) {
+  const live = Boolean(data.event.published_at);
+  const pill = document.getElementById('event-status-pill');
+  if (pill) {
+    pill.textContent = live ? 'Live' : 'Draft';
+    pill.className = `status-pill ${live ? 'is-live' : 'is-draft'}`;
+  }
+
+  // Publish card on the overview.
+  document.getElementById('publish-title').textContent = live ? 'Live' : 'Draft';
+  document.getElementById('publish-copy').textContent = live
+    ? 'Guests can open the invitation and reply. You can keep editing — changes show up straight away.'
+    : data.publishBlocker
+      ? `Only you can see this draft. ${data.publishBlocker}`
+      : 'Only you can see this invitation. Publish it when it looks right — you can keep editing afterwards.';
+  const publishBtn = document.getElementById('publish-btn');
+  publishBtn.hidden = live;
+  publishBtn.disabled = Boolean(data.publishBlocker);
+
+  document.getElementById('share-draft-notice').hidden = live;
+  document.getElementById('unpublish-row').hidden = !live;
+}
+
+function renderSetup(data) {
+  const { setup } = data;
+  const live = Boolean(data.event.published_at);
+
+  // The banner follows the host across tabs while the event is still a draft.
+  const banner = document.getElementById('setup-banner');
+  banner.hidden = live || !setup.next;
+  if (!banner.hidden) {
+    document.getElementById('setup-banner-title').textContent = `Setup · ${setup.done} of ${setup.total} done`;
+    document.getElementById('setup-banner-next').textContent = `Next: ${setup.next.label}`;
+    document.getElementById('setup-banner-bar').style.width = `${Math.round((setup.done / setup.total) * 100)}%`;
+    const btn = document.getElementById('setup-banner-btn');
+    btn.href = setup.next.href;
+    btn.dataset.goto = tabOf(setup.next.href);
+  }
+
+  document.getElementById('setup-count').textContent = `${setup.done} of ${setup.total}`;
+  document.getElementById('setup-checklist').innerHTML = setup.steps
+    .map(
+      (s) => `
+      <li class="${s.done ? 'is-done' : setup.next && s.id === setup.next.id ? 'is-next' : ''}">
+        <span class="check" aria-hidden="true">${s.done ? '✓' : ''}</span>
+        <span class="check-copy"><strong>${escapeHtml(s.label)}</strong><small>${escapeHtml(s.hint)}</small></span>
+        ${s.done ? '<span class="check-state">Done</span>' : `<a class="btn btn-ghost btn-small" href="${escapeHtml(s.href)}" data-goto="${tabOf(s.href)}">${s.id === 'publish' ? 'Review' : 'Go'}</a>`}
+      </li>`
+    )
+    .join('');
+
+  // The single most useful next thing, big and obvious.
+  const next = document.getElementById('overview-next');
+  if (!setup.next) {
+    next.innerHTML = `
+      <span class="section-kicker">All set</span>
+      <h2>Your invitation is out there.</h2>
+      <p>${data.totals.attendingCount} ${data.totals.attendingCount === 1 ? 'guest is' : 'guests are'} coming. Keep sharing, or open the door scanner on the day.</p>
+      <div class="next-actions"><a class="btn btn-primary" href="${tabUrl('guests')}" data-goto="guests">See guests</a><a class="btn btn-ghost" href="/host/${EVENT_ID}/checkin">Door check-in</a></div>`;
+  } else if (setup.next.id === 'publish') {
+    next.innerHTML = `
+      <span class="section-kicker">Next step</span>
+      <h2>Ready to go live?</h2>
+      <p>${escapeHtml(data.publishBlocker || 'Everything essential is in place. Publishing makes the link work for guests — you can keep editing afterwards.')}</p>
+      <div class="next-actions"><button class="btn btn-primary" type="button" data-publish ${data.publishBlocker ? 'disabled' : ''}>Publish invitation</button><a class="btn btn-ghost" href="${escapeHtml(data.event.shareUrl)}" target="_blank" rel="noopener">Preview first ↗</a></div>`;
+  } else {
+    next.innerHTML = `
+      <span class="section-kicker">Next step</span>
+      <h2>${escapeHtml(setup.next.label)}</h2>
+      <p>${escapeHtml(setup.next.hint)}</p>
+      <div class="next-actions"><a class="btn btn-primary" href="${escapeHtml(setup.next.href)}" data-goto="${tabOf(setup.next.href)}">${
+        setup.next.id === 'share' ? 'Share the invitation' : 'Continue'
+      } →</a></div>`;
+  }
+
+  // Where the design tab's last step points.
+  const designNext = document.getElementById('design-next-link');
+  const after = setup.steps.find((s) => !s.done && s.id !== 'look');
+  designNext.href = after ? after.href : tabUrl('share');
+  designNext.dataset.goto = tabOf(designNext.href);
+  designNext.textContent = after ? `Next: ${after.label} →` : 'Share it →';
+}
+
+function tabOf(href) {
+  const segment = String(href).split('/').filter(Boolean)[2];
+  return TAB_KEYS.includes(segment) ? segment : 'overview';
+}
+
+function renderOverviewStats(data) {
+  const t = data.totals;
+  const tiles = [
+    { num: t.attendingCount, label: 'Coming' },
+    { num: t.adults + t.kids, label: 'Heads' },
+    t.waitlistCount ? { num: t.waitlistCount, label: 'Waitlist' } : null,
+    { num: t.declinedCount, label: 'Declined' },
+  ].filter(Boolean);
+  document.getElementById('overview-stats').innerHTML = tiles
+    .map((x) => `<div class="stat-tile"><div class="num">${x.num}</div><div class="label">${x.label}</div></div>`)
+    .join('');
+}
+
+function renderShareTab(data) {
+  const url = data.event.shareUrl;
+  const when = data.event.event_date
+    ? new Date(data.event.event_date).toLocaleString(undefined, { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '';
+  const message = `You're invited: ${data.event.name}${when ? ` — ${when}` : ''}. RSVP here: ${url}`;
+
+  document.getElementById('share-url-display').value = url;
+  document.getElementById('whatsapp-share-btn').href = `https://wa.me/?text=${encodeURIComponent(message)}`;
+  document.getElementById('email-share-btn').href =
+    `mailto:?subject=${encodeURIComponent(`You're invited: ${data.event.name}`)}&body=${encodeURIComponent(message)}`;
+  document.getElementById('poster-link').href = `/host/${EVENT_ID}/poster`;
+  document.getElementById('calendar-link').href = `/api/events/${encodeURIComponent(data.event.slug)}/calendar.ics`;
+
+  const native = document.getElementById('native-share-btn');
+  native.hidden = !navigator.share;
+  native.onclick = () => navigator.share({ title: data.event.name, text: `You're invited: ${data.event.name}`, url }).catch(() => {});
+}
+
+async function setPublished(published) {
+  const errorBox = document.getElementById('publish-error');
+  errorBox.style.display = 'none';
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/publish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ published }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not change the status.');
+    await loadDashboard();
+    // Straight from publishing to sharing is the natural next move.
+    if (published) showTab('share', { push: true });
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+    const manage = document.getElementById('manage-error');
+    manage.textContent = err.message;
+    manage.style.display = 'block';
+  }
+}
+
 function render(data) {
   document.getElementById('event-title').textContent = data.event.name;
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('share-link').value = data.event.shareUrl;
+  renderStatus(data);
+  renderSetup(data);
+  renderOverviewStats(data);
+  renderShareTab(data);
   const previewLink = document.getElementById('public-preview-link');
   previewLink.href = data.event.shareUrl;
   const shareOpenButton = document.getElementById('share-open-btn');
@@ -326,7 +523,6 @@ function render(data) {
     showEditorPanel(false);
   });
 
-  document.getElementById('checkin-link').href = `/host/${EVENT_ID}/checkin`;
   document.getElementById('export-csv-btn').href = `/api/events/${EVENT_ID}/guests.csv`;
   renderDiscovery(data.event);
   renderEmbedSnippet(data.event);
@@ -596,9 +792,7 @@ async function composeGuestEmail({ recipientMode, subject, intro, button }) {
   }
 }
 
-document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
-
-document.getElementById('copy-link-btn').addEventListener('click', async () => {
+document.getElementById('copy-link-btn')?.addEventListener('click', async () => {
   const input = document.getElementById('share-link');
   try {
     await navigator.clipboard.writeText(input.value);
@@ -743,6 +937,9 @@ async function saveCustomizedTemplate() {
     editorState.selectedId = null;
     drawEditor();
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .9));
+    // A second, smaller copy for link previews: WhatsApp and friends quietly
+    // drop preview images much over a few hundred KB.
+    const previewBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .72));
     editorState.selectedId = selectedId;
     drawEditor();
     if (!blob) throw new Error('Could not render this invitation.');
@@ -751,6 +948,13 @@ async function saveCustomizedTemplate() {
     const res = await fetch(`/api/events/${EVENT_ID}/image`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save this variation.');
+    // Must follow the main upload, which clears any older preview copy. A
+    // failure here only costs the link preview, so it never blocks the save.
+    if (previewBlob) {
+      const previewForm = new FormData();
+      previewForm.append('image', previewBlob, 'preview.jpg');
+      await fetch(`/api/events/${EVENT_ID}/og-image`, { method: 'POST', body: previewForm }).catch(() => {});
+    }
     editorState.layers = [];
     editorState.selectedId = null;
     await loadDashboard();
@@ -956,11 +1160,15 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save changes.');
-    if (data.promoted) {
-      setEmailStatus(
-        `Saved. ${data.promoted} ${data.promoted === 1 ? 'guest was' : 'guests were'} moved off the waitlist and emailed.`
-      );
-    }
+    // Confirm where the host is looking — the Settings tab — not over on Guests.
+    const status = document.getElementById('details-status');
+    status.textContent = data.promoted
+      ? `Saved. ${data.promoted} ${data.promoted === 1 ? 'guest was' : 'guests were'} moved off the waitlist and emailed.`
+      : 'Saved.';
+    status.className = 'save-status success';
+    setTimeout(() => {
+      if (status.textContent === 'Saved.') status.textContent = '';
+    }, 3000);
     loadDashboard();
   } catch (err) {
     errorBox.textContent = err.message;
@@ -1202,11 +1410,82 @@ document.getElementById('copy-embed-btn').addEventListener('click', async (e) =>
   setTimeout(() => (button.textContent = original), 2200);
 });
 
-document.getElementById('logout-btn').addEventListener('click', async () => {
-  await fetch('/auth/logout', { method: 'POST' });
-  window.location.href = '/';
+// --- Publishing and managing the event ---
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-publish], #publish-btn');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  setPublished(true).finally(() => {
+    btn.disabled = false;
+  });
 });
 
+document.getElementById('unpublish-btn').addEventListener('click', async () => {
+  const guests = lastData?.rsvps?.length || 0;
+  const warning = guests
+    ? `Unpublish? ${guests} ${guests === 1 ? 'guest has' : 'guests have'} already replied — they'll see "coming soon" if they open the link.`
+    : 'Unpublish? Anyone opening the link will see "coming soon" until you publish again.';
+  if (!window.confirm(warning)) return;
+  await setPublished(false);
+});
+
+document.getElementById('duplicate-btn').addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Copying…';
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/duplicate`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not copy this event.');
+    // The copy has no date yet, and that's the first thing it needs.
+    window.location.href = `/host/${encodeURIComponent(data.id)}/settings`;
+  } catch (err) {
+    const box = document.getElementById('manage-error');
+    box.textContent = err.message;
+    box.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Duplicate';
+  }
+});
+
+document.getElementById('delete-event-btn').addEventListener('click', async () => {
+  const name = lastData?.event?.name || 'this event';
+  const guests = lastData?.rsvps?.length || 0;
+  const typed = window.prompt(
+    `This permanently deletes "${name}"${guests ? ` and ${guests} ${guests === 1 ? 'reply' : 'replies'}` : ''}. It can't be undone.\n\nType DELETE to confirm.`
+  );
+  if (typed !== 'DELETE') return;
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Could not delete the event.');
+    window.location.href = '/events';
+  } catch (err) {
+    const box = document.getElementById('manage-error');
+    box.textContent = err.message;
+    box.style.display = 'block';
+  }
+});
+
+document.getElementById('share-tab-copy-btn').addEventListener('click', async (e) => {
+  const button = e.currentTarget;
+  const input = document.getElementById('share-url-display');
+  try {
+    await navigator.clipboard.writeText(input.value);
+    button.textContent = 'Copied!';
+  } catch (err) {
+    input.select();
+    button.textContent = 'Press ⌘/Ctrl+C';
+  }
+  setTimeout(() => (button.textContent = 'Copy link'), 1800);
+});
+
+// Give "go to tab" links a real address, so opening them in a new tab works.
+document.querySelectorAll('[data-goto]').forEach((link) => {
+  if (link.tagName === 'A') link.href = tabUrl(link.dataset.goto);
+});
+
+showTab(document.querySelector('[data-initial-tab]')?.dataset.initialTab || tabFromPath());
 loadDashboard();
 loadTemplates();
 loadFaqs();

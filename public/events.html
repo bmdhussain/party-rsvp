@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+</head>
+<body>
+  <div class="wrap studio-home app-page">
+    <!--HEADER-->
+
+    <main>
+      <section class="page-heading">
+        <div><span class="section-kicker">My events</span><h1>Everything you're hosting</h1></div>
+        <a class="btn btn-primary" href="/events/new">+ Create event</a>
+      </section>
+
+      <nav class="segmented-tabs" id="event-filters" aria-label="Filter events">
+        <a href="/events" data-filter="all">All <span data-count="all"></span></a>
+        <a href="/events?show=draft" data-filter="draft">Drafts <span data-count="draft"></span></a>
+        <a href="/events?show=upcoming" data-filter="upcoming">Upcoming <span data-count="upcoming"></span></a>
+        <a href="/events?show=past" data-filter="past">Past <span data-count="past"></span></a>
+      </nav>
+
+      <div id="events-list" class="event-collection"><div class="empty-note">Loading your events…</div></div>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/events.js"></script>
+</body>
+</html>

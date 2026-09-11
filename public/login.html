@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+</head>
+<body>
+  <div class="wrap narrow login-page">
+    <!--HEADER-->
+
+    <main class="login-shell">
+      <section class="card login-panel <!--SLOT:login-failed-->">
+        <div class="eyebrow">For hosts</div>
+        <h1>Sign in to RSVPfor</h1>
+        <p class="login-lede">Create invitations, see who's coming, and pick up any event right where you left it.</p>
+        <div class="error-msg login-failed-msg">Sign-in was cancelled or didn't complete. Please try again.</div>
+        <div id="provider-buttons" data-next="<!--SLOT:next-query-->"><div class="empty-note">Loading sign-in options…</div></div>
+        <ul class="login-points">
+          <li>Your events stay private until you publish them.</li>
+          <li>Guests never need an account to reply.</li>
+        </ul>
+      </section>
+      <p class="login-aside">Just here to reply to an invitation? Open the link your host sent — no sign-in needed. <a href="/explore">Or explore public events →</a></p>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/login.js"></script>
+</body>
+</html>
