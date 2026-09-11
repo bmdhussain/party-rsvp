@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+  <link rel="stylesheet" href="/forms.css" />
+</head>
+<body>
+  <div class="wrap studio-home app-page">
+    <!--HEADER-->
+
+    <main>
+      <section class="page-heading">
+        <div><span class="section-kicker">Forms</span><h1>Ask anything, collect it all</h1><p class="page-lede">Registration, sign-ups, surveys — or extra questions on an event's RSVP. Everyone fills them in on one clean page, no account needed.</p></div>
+        <a class="btn btn-primary" href="/forms/new">+ New form</a>
+      </section>
+
+      <nav class="segmented-tabs" id="form-filters" aria-label="Filter forms">
+        <a href="/forms" data-filter="all">All <span data-count="all"></span></a>
+        <a href="/forms?show=open" data-filter="open">Open <span data-count="open"></span></a>
+        <a href="/forms?show=draft" data-filter="draft">Drafts <span data-count="draft"></span></a>
+        <a href="/forms?show=rsvp" data-filter="rsvp">RSVP questions <span data-count="rsvp"></span></a>
+      </nav>
+
+      <div id="forms-list" class="forms-list"><div class="empty-note">Loading your forms…</div></div>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/forms.js"></script>
+</body>
+</html>

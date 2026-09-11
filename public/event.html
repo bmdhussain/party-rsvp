@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/platform.css" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
   <!--HEAD-->
+  <link rel="stylesheet" href="/forms.css" />
 </head>
 <body>
   <div class="wrap narrow">
@@ -98,6 +99,9 @@
           <div class="hint">Only the host can see headcount numbers — everyone else just sees your comment below.</div>
         </div>
 
+        <!-- The host's own extra questions, if they added any. Only asked of guests who are coming. -->
+        <div id="rsvp-questions" class="form-questions rsvp-questions" hidden></div>
+
         <label for="comment">Leave a message (visible to everyone)</label>
         <textarea id="comment" name="comment" maxlength="500" placeholder="Can't wait! Should I bring anything?"></textarea>
 
@@ -156,6 +160,7 @@
     <!--FOOTER-->
   </div>
 
+  <script src="/form-render.js"></script>
   <script src="/event.js"></script>
 </body>
 </html>

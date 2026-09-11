@@ -22,6 +22,9 @@ const {
 const { toCsv, csvFilename } = require('./lib/csv');
 const { setupProgress, publishBlocker } = require('./lib/setup');
 const { registerPages } = require('./lib/pages');
+const { registerFormRoutes } = require('./lib/form-routes');
+const { validateAnswers, FIELD_TYPES } = require('./lib/forms');
+const { baseUrl } = require('./lib/render');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -716,8 +719,9 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   // Waitlisted guests read oldest-first (that's the promotion order); everyone
   // else reads newest-first, as the host list always has.
   const { rows: rsvps } = await pool.query(
-    `SELECT r.*, c.checked_in_at FROM rsvps r
+    `SELECT r.*, c.checked_in_at, fr.answers AS form_answers FROM rsvps r
      LEFT JOIN checkins c ON c.rsvp_id = r.id
+     LEFT JOIN form_responses fr ON fr.rsvp_id = r.id
      WHERE r.event_id = $1
      ORDER BY CASE WHEN r.status = 'waitlist' THEN 0 ELSE 1 END,
               CASE WHEN r.status = 'waitlist' THEN r.created_at END ASC,
@@ -765,6 +769,14 @@ app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
     },
     setup: setupProgress({ ...eventRows[0], rsvp_count: rsvps.length }),
     publishBlocker: publishBlocker(eventRows[0]),
+    rsvpForm: await (async () => {
+      const { rows } = await pool.query(`SELECT id, fields FROM forms WHERE event_id = $1 AND kind = 'rsvp'`, [
+        req.params.eventId,
+      ]);
+      return rows[0]
+        ? { id: rows[0].id, questions: rows[0].fields.filter((f) => FIELD_TYPES[f.type]?.answer) }
+        : null;
+    })(),
     rsvps,
     totals,
   });
@@ -1071,14 +1083,22 @@ app.get('/api/events/:eventId/guests.csv', requireAuth, async (req, res) => {
 
   const { rows } = await pool.query(
     `SELECT r.name, r.email, r.status, r.adults, r.kids, r.comment, r.created_at,
-            c.checked_in_at
-     FROM rsvps r LEFT JOIN checkins c ON c.rsvp_id = r.id
+            c.checked_in_at, fr.answers AS form_answers
+     FROM rsvps r
+     LEFT JOIN checkins c ON c.rsvp_id = r.id
+     LEFT JOIN form_responses fr ON fr.rsvp_id = r.id
      WHERE r.event_id = $1
      ORDER BY r.created_at ASC`,
     [req.params.eventId]
   );
+  // The host's RSVP questions become extra columns, in the order they're asked.
+  const { rows: formRows } = await pool.query(`SELECT fields FROM forms WHERE event_id = $1 AND kind = 'rsvp'`, [
+    req.params.eventId,
+  ]);
+  const questions = formRows[0] ? formRows[0].fields.filter((f) => FIELD_TYPES[f.type]?.answer) : [];
 
   const iso = (v) => (v ? new Date(v).toISOString() : '');
+  const asCell = (v) => (Array.isArray(v) ? v.join('; ') : v);
   const csv = toCsv(
     [
       { label: 'Name', value: (r) => r.name },
@@ -1088,6 +1108,7 @@ app.get('/api/events/:eventId/guests.csv', requireAuth, async (req, res) => {
       { label: 'Kids', value: (r) => (r.status === 'declined' ? '' : r.kids) },
       { label: 'Party size', value: (r) => (r.status === 'declined' ? '' : r.adults + r.kids) },
       { label: 'Message', value: (r) => r.comment },
+      ...questions.map((f) => ({ label: f.label, value: (r) => asCell(r.form_answers?.[f.id]) })),
       { label: 'Replied at', value: (r) => iso(r.created_at) },
       { label: 'Checked in at', value: (r) => iso(r.checked_in_at) },
     ],
@@ -1229,12 +1250,15 @@ app.get('/api/events/:slug/public', async (req, res) => {
      WHERE event_id = $1 ORDER BY sort_order ASC, created_at ASC`,
     [id]
   );
+  const { rows: rsvpForms } = await pool.query(`SELECT fields FROM forms WHERE event_id = $1 AND kind = 'rsvp'`, [id]);
 
   res.json({
     ...event,
     inviteOnly: invite_mode === 'restricted',
     imageUrl: makeImageUrl(req, req.params.slug, has_image),
     shareUrl: makeShareUrl(req, req.params.slug),
+    // The host's extra questions, asked below the standard RSVP fields.
+    rsvpQuestions: rsvpForms[0] ? rsvpForms[0].fields : [],
     capacity,
     goingCount: taken,
     spotsLeft: capacity === null ? null : Math.max(0, capacity - taken),
@@ -1438,6 +1462,24 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
       }
     }
 
+    // The host's extra RSVP questions, if any. Only someone who's coming is
+    // asked them — dietary needs don't matter for a guest who can't make it.
+    // Checked before anything is written, so a bad answer changes nothing.
+    const { rows: formRows } = await client.query(
+      `SELECT id, fields FROM forms WHERE event_id = $1 AND kind = 'rsvp'`,
+      [event.id]
+    );
+    const rsvpForm = formRows[0] || null;
+    let rsvpAnswers = null;
+    if (rsvpForm && isAttending) {
+      const checked = validateAnswers(rsvpForm.fields, req.body?.answers);
+      if (!checked.ok) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Please check the highlighted questions.', fieldErrors: checked.errors });
+      }
+      rsvpAnswers = checked.answers;
+    }
+
     // One reply per email address: replying again revises the earlier reply
     // rather than stacking a second row, which would double-count headcount
     // against the capacity limit.
@@ -1468,6 +1510,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     // Coming back after declining means asking for a spot now, so the queue
     // position reflects this reply rather than the original one.
     const resetQueueTime = existing !== null && existing.status === 'declined' && isAttending;
+    const rsvpId = existing ? existing.id : crypto.randomUUID();
 
     if (existing) {
       await client.query(
@@ -1493,7 +1536,7 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
         `INSERT INTO rsvps (id, event_id, name, email, attending, adults, kids, comment, status, ticket_token)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
-          crypto.randomUUID(),
+          rsvpId,
           event.id,
           name.trim().slice(0, 100),
           email.trim().slice(0, 200),
@@ -1505,6 +1548,22 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
           ticketToken,
         ]
       );
+    }
+
+    // One set of answers per RSVP: a revised reply replaces them, and saying
+    // "can't make it" clears answers that no longer apply.
+    if (rsvpForm) {
+      if (rsvpAnswers) {
+        await client.query(
+          `INSERT INTO form_responses (id, form_id, rsvp_id, respondent_email, answers)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (rsvp_id) WHERE rsvp_id IS NOT NULL
+           DO UPDATE SET answers = EXCLUDED.answers, respondent_email = EXCLUDED.respondent_email`,
+          [crypto.randomUUID(), rsvpForm.id, rsvpId, email.trim().slice(0, 200), JSON.stringify(rsvpAnswers)]
+        );
+      } else {
+        await client.query('DELETE FROM form_responses WHERE rsvp_id = $1', [rsvpId]);
+      }
     }
 
     await client.query('COMMIT');
@@ -1548,6 +1607,10 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
     ticketUrl: `${req.protocol}://${req.get('host')}/t/${result.ticketToken}`,
   });
 });
+
+// --- Custom forms ---
+
+registerFormRoutes(app, { pool, requireAuth, verifySameOrigin, baseUrl });
 
 // --- Pages ---
 

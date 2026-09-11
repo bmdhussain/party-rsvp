@@ -2776,3 +2776,20 @@ body:has(.ticket-card) .card {
   color: var(--rf-ink-soft);
   opacity: 1;
 }
+
+/* Four dashboard shortcuts now that forms have one. */
+.dash-shortcuts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .dash-shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 650px) {
+  .dash-shortcuts {
+    grid-template-columns: 1fr;
+  }
+}

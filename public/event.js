@@ -132,6 +132,7 @@ async function loadEvent() {
 
     renderCapacity(event);
     renderFaqs(event.faqs);
+    renderRsvpQuestions(event);
 
     const calendarUrl = `/api/events/${SLUG}/calendar.ics`;
     document.getElementById('add-calendar-btn').href = calendarUrl;
@@ -295,11 +296,45 @@ function fireConfetti() {
   }
 }
 
+function isAttendingSelected() {
+  return document.querySelector('input[name="attending"]:checked')?.value !== 'no';
+}
+
+// The host's extra questions only apply to guests who are coming. Hidden
+// questions are also disabled: a hidden but required input would otherwise
+// make the browser refuse to submit "can't make it", with nothing on screen
+// explaining why.
+function syncRsvpQuestions() {
+  const box = document.getElementById('rsvp-questions');
+  if (!box || !box.dataset.hasQuestions) return;
+  const show = isAttendingSelected();
+  box.hidden = !show;
+  box.querySelectorAll('input, textarea, select').forEach((el) => {
+    el.disabled = !show;
+  });
+}
+
+let rsvpQuestions = [];
+
+function renderRsvpQuestions(event) {
+  const box = document.getElementById('rsvp-questions');
+  const questions = Array.isArray(event.rsvpQuestions) ? event.rsvpQuestions : [];
+  // Rendered once: loadEvent runs again after replying, and re-rendering would
+  // wipe anything typed.
+  if (!box || box.dataset.rendered || !questions.length) return;
+  rsvpQuestions = questions;
+  window.RSVPforForm.render(box, questions, { prefix: 'rq' });
+  box.dataset.rendered = '1';
+  box.dataset.hasQuestions = '1';
+  syncRsvpQuestions();
+}
+
 function setupAttendingToggle() {
   const guestFields = document.getElementById('guest-count-fields');
   document.querySelectorAll('input[name="attending"]').forEach((radio) => {
     radio.addEventListener('change', () => {
       guestFields.style.display = radio.value === 'no' && radio.checked ? 'none' : 'block';
+      syncRsvpQuestions();
     });
   });
 }
@@ -325,6 +360,27 @@ function setupForm() {
       comment: formData.get('comment'),
     };
 
+    // The host's extra questions, for guests who are coming. Required choice
+    // questions can't use the browser's own check, so catch them here; the
+    // server checks everything again regardless.
+    const questionsBox = document.getElementById('rsvp-questions');
+    if (rsvpQuestions.length && payload.attending === 'yes') {
+      payload.answers = window.RSVPforForm.collect(questionsBox);
+      const missing = {};
+      rsvpQuestions.forEach((q) => {
+        if (q.required && q.type !== 'section' && payload.answers[q.id] === undefined) missing[q.id] = 'This question is required.';
+      });
+      if (Object.keys(missing).length) {
+        window.RSVPforForm.showErrors(questionsBox, missing);
+        errorBox.textContent = 'Please answer the required questions.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send RSVP';
+        return;
+      }
+      window.RSVPforForm.clearErrors(questionsBox);
+    }
+
     try {
       const res = await fetch(`/api/events/${SLUG}/rsvp`, {
         method: 'POST',
@@ -333,6 +389,7 @@ function setupForm() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.fieldErrors) window.RSVPforForm.showErrors(questionsBox, data.fieldErrors);
         throw new Error(data.error || 'Something went wrong.');
       }
       form.style.display = 'none';

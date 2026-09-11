@@ -505,6 +505,8 @@ function render(data) {
   renderSetup(data);
   renderOverviewStats(data);
   renderShareTab(data);
+  renderRsvpQuestionsCard(data);
+  renderGuestTableHead(data);
   const previewLink = document.getElementById('public-preview-link');
   previewLink.href = data.event.shareUrl;
   const shareOpenButton = document.getElementById('share-open-btn');
@@ -570,6 +572,7 @@ function render(data) {
   }
   empty.style.display = 'none';
 
+  const questions = data.rsvpForm ? data.rsvpForm.questions : [];
   body.innerHTML = data.rsvps
     .map((r) => {
       const badge = guestBadge(r);
@@ -581,10 +584,43 @@ function render(data) {
         <td>${badge.saidYes ? r.adults : '—'}</td>
         <td>${badge.saidYes ? r.kids : '—'}</td>
         <td>${escapeHtml(r.comment || '')}</td>
+        ${questions.map((q) => `<td>${escapeHtml(answerText(r.form_answers?.[q.id]))}</td>`).join('')}
         <td>${formatWhen(r.created_at)}</td>
       </tr>`;
     })
     .join('');
+}
+
+function answerText(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (Array.isArray(value)) return value.join(', ');
+  if (value === 'yes') return 'Yes';
+  if (value === 'no') return 'No';
+  return String(value);
+}
+
+// The host's RSVP questions become extra guest-list columns, between the
+// message and the reply time.
+function renderGuestTableHead(data) {
+  const questions = data.rsvpForm ? data.rsvpForm.questions : [];
+  document.getElementById('guest-table-head').innerHTML = `<tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th>${questions
+    .map((q) => `<th>${escapeHtml(q.label)}</th>`)
+    .join('')}<th>Replied</th></tr>`;
+}
+
+function renderRsvpQuestionsCard(data) {
+  const summary = document.getElementById('rsvp-questions-summary');
+  const actions = document.getElementById('rsvp-questions-actions');
+  const rf = data.rsvpForm;
+  if (!rf) {
+    summary.innerHTML = '<p class="rsvp-questions-empty">No extra questions yet — guests just give their name, email and headcount.</p>';
+    actions.innerHTML = `<a class="btn btn-primary btn-small" href="/forms/new?event=${encodeURIComponent(EVENT_ID)}">Add RSVP questions</a>`;
+    return;
+  }
+  summary.innerHTML = rf.questions.length
+    ? `<ol class="rsvp-questions-list">${rf.questions.map((q) => `<li>${escapeHtml(q.label)}${q.required ? ' <span class="fq-req">*</span>' : ''}</li>`).join('')}</ol>`
+    : '<p class="rsvp-questions-empty">The question set is empty — add a question to start asking.</p>';
+  actions.innerHTML = `<a class="btn btn-primary btn-small" href="/forms/${encodeURIComponent(rf.id)}">Edit questions</a><a class="btn btn-ghost btn-small" href="/forms/${encodeURIComponent(rf.id)}/responses">See answers</a>`;
 }
 
 // Waitlisted guests said yes but haven't got a spot — the host needs to see

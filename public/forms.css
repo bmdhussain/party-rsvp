@@ -1,0 +1,1063 @@
+/* Custom forms: the questions people answer (public form page and the RSVP
+   form's extra questions), the builder, the template gallery, the forms list
+   and the responses views. Loaded after app.css, and built on the design
+   tokens it defines (--rf-*), so forms look like the rest of the site. */
+
+/* ------------------------------------------------------------- Questions */
+
+.form-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-questions .fq {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+  border-radius: 14px;
+  background: rgba(255, 252, 247, 0.72);
+  min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-questions .fq:focus-within {
+  border-color: rgba(214, 106, 97, 0.45);
+  box-shadow: 0 0 0 4px rgba(214, 106, 97, 0.08);
+}
+
+.form-questions .fq.has-error {
+  border-color: #c2695f;
+  background: #fff6f3;
+}
+
+.form-questions .fq-label {
+  display: block;
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--rf-ink, #2d2630);
+}
+
+.fq-req {
+  color: #c0453c;
+  margin-left: 3px;
+}
+
+.form-questions .fq-help {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rf-muted, #827681);
+}
+
+.form-questions .fq input[type=text],
+.form-questions .fq input[type=email],
+.form-questions .fq input[type=tel],
+.form-questions .fq input[type=number],
+.form-questions .fq input[type=date],
+.form-questions .fq input[type=time],
+.form-questions .fq textarea,
+.form-questions .fq select {
+  width: 100%;
+  margin-top: 6px;
+  font: 15px 'DM Sans', sans-serif;
+}
+
+.form-questions .fq input[type=tel],
+.form-questions .fq input[type=date],
+.form-questions .fq input[type=time] {
+  padding: 12px 14px;
+  border-radius: 13px;
+  border: 1px solid var(--rf-line-strong, rgba(74, 49, 82, 0.24));
+  background: rgba(255, 252, 247, 0.86);
+  color: var(--rf-ink, #2d2630);
+  min-height: 46px;
+}
+
+.form-questions .fq-group {
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+}
+
+.form-questions .fq-group legend {
+  float: left;
+  width: 100%;
+}
+
+.form-questions .fq-group legend + * {
+  clear: both;
+}
+
+.fq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  clear: both;
+}
+
+.form-questions .fq-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rf-ink-soft, #5e5562);
+  cursor: pointer;
+  min-height: 44px;
+  transition: background-color 0.12s;
+}
+
+.form-questions .fq-option:hover {
+  background: rgba(74, 49, 82, 0.05);
+}
+
+.form-questions .fq-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--rf-plum, #4a3152);
+}
+
+.fq-pills .fq-options {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.form-questions .fq-pill {
+  position: relative;
+  margin: 0;
+  cursor: pointer;
+}
+
+.fq-pill input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+}
+
+.fq-pill span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 64px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1px solid var(--rf-line-strong, rgba(74, 49, 82, 0.24));
+  background: #fffdf9;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--rf-ink-soft, #5e5562);
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.fq-rating span {
+  min-width: 48px;
+  padding: 0;
+}
+
+.fq-pill input:checked + span {
+  border-color: var(--rf-plum, #4a3152);
+  background: var(--rf-plum, #4a3152);
+  color: #fffaf5;
+}
+
+.fq-pill input:focus-visible + span {
+  outline: 3px solid rgba(214, 106, 97, 0.58);
+  outline-offset: 2px;
+}
+
+.fq-rating-scale {
+  display: flex;
+  justify-content: space-between;
+  width: min(100%, 272px);
+  font-size: 11px;
+  color: var(--rf-muted, #827681);
+}
+
+.form-questions .fq-error {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a8433c;
+}
+
+.form-questions .fq-error:empty {
+  display: none;
+}
+
+.form-questions .fq-section {
+  padding: 20px 4px 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.fq-section h3 {
+  margin: 0;
+  font-family: Fraunces, serif;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  color: var(--rf-ink, #2d2630);
+}
+
+.fq-section p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--rf-muted, #827681);
+}
+
+/* RSVP extra questions sit inside the RSVP card, between headcount and message. */
+.rsvp-questions {
+  margin: 18px 0 4px;
+}
+
+/* ------------------------------------------------------------- Public form page */
+
+.form-card {
+  padding: clamp(22px, 5vw, 40px);
+}
+
+.form-card-head {
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+}
+
+.form-card-head h1 {
+  font-family: Fraunces, serif;
+  font-size: clamp(30px, 6vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  margin: 8px 0 10px;
+  color: var(--rf-ink, #2d2630);
+}
+
+.form-description {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--rf-ink-soft, #5e5562);
+  white-space: pre-wrap;
+}
+
+.form-required-note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--rf-muted, #827681);
+}
+
+.form-unavailable {
+  padding: 22px;
+  border-radius: 14px;
+  background: #f3ece5;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--rf-ink-soft, #5e5562);
+  text-align: center;
+}
+
+.form-error-summary {
+  margin: 0 0 14px;
+}
+
+.form-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.form-submit-row .btn-primary {
+  width: auto;
+  min-width: 160px;
+}
+
+/* Present in the page for bots, invisible and unreachable for people. */
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.form-done {
+  text-align: center;
+  padding: 20px 8px 8px;
+}
+
+.form-done-mark {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--rf-mint, #4b9186);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  animation: pop 0.45s ease both;
+}
+
+.form-done h2 {
+  font-family: Fraunces, serif;
+  font-size: 28px;
+  letter-spacing: -0.035em;
+  margin: 0 0 8px;
+}
+
+.form-done p {
+  color: var(--rf-ink-soft, #5e5562);
+  margin: 0 auto 18px;
+  max-width: 44ch;
+  white-space: pre-wrap;
+}
+
+.form-footnote {
+  text-align: center;
+  font-size: 12px;
+  color: var(--rf-muted, #827681);
+  margin-top: 18px;
+}
+
+/* ------------------------------------------------------------- Forms list */
+
+.page-lede {
+  margin: 8px 0 0;
+  max-width: 620px;
+  color: var(--rf-muted, #827681);
+  line-height: 1.6;
+}
+
+.forms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+  background: rgba(255, 252, 247, 0.92);
+  box-shadow: var(--rf-shadow-sm, 0 5px 16px rgba(62, 42, 55, 0.07));
+}
+
+.form-row-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 320px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.form-row-main:hover strong {
+  text-decoration: underline;
+}
+
+.form-row-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: #efe6de;
+  color: var(--rf-plum, #4a3152);
+  font-size: 18px;
+}
+
+.form-row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.form-row-copy strong {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-row-copy small {
+  font-size: 12px;
+  color: var(--rf-muted, #827681);
+}
+
+.form-row-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-row-count {
+  font-size: 13px;
+  color: var(--rf-ink-soft, #5e5562);
+  text-decoration: none;
+}
+
+.form-row-count:hover {
+  color: var(--rf-coral, #d66a61);
+}
+
+.status-pill.is-rsvp {
+  background: #e7e1f0;
+  color: #57407a;
+}
+
+/* ------------------------------------------------------------- Template gallery */
+
+.template-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.template-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+  background: rgba(255, 252, 247, 0.94);
+  box-shadow: var(--rf-shadow-sm, 0 5px 16px rgba(62, 42, 55, 0.07));
+  transition: transform 0.16s, box-shadow 0.16s;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--rf-shadow-md, 0 16px 34px rgba(62, 42, 55, 0.11));
+}
+
+.template-card.is-blank {
+  border-style: dashed;
+  background: rgba(255, 252, 247, 0.6);
+}
+
+.template-card h3 {
+  margin: 0 0 6px;
+  font-family: Fraunces, serif;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+}
+
+.template-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--rf-muted, #827681);
+}
+
+.template-card-questions {
+  list-style: none;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f4eee7;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.template-card-questions li {
+  font-size: 12px;
+  color: var(--rf-ink-soft, #5e5562);
+  padding-left: 16px;
+  position: relative;
+}
+
+.template-card-questions li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  border: 1.5px solid var(--rf-muted, #827681);
+}
+
+.template-card-questions li.more {
+  color: var(--rf-muted, #827681);
+  font-style: italic;
+}
+
+.template-card-questions li.more::before {
+  display: none;
+}
+
+.template-card .btn {
+  align-self: flex-start;
+}
+
+/* ------------------------------------------------------------- Builder */
+
+.builder-notice {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #f6ead3;
+  color: #7a5c14;
+  font-size: 13px;
+}
+
+.builder-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.85fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.builder-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.builder-title-card {
+  border-top: 5px solid var(--rf-plum, #4a3152);
+}
+
+.builder-title-card .builder-title-input {
+  width: 100%;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: 700 28px Fraunces, serif;
+  letter-spacing: -0.035em;
+  color: var(--rf-ink, #2d2630);
+}
+
+.builder-title-card .builder-description-input {
+  width: 100%;
+  min-height: 0;
+  margin-top: 8px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.builder-title-card .builder-title-input:hover,
+.builder-title-card .builder-description-input:hover {
+  border-bottom-color: var(--rf-line-strong, rgba(74, 49, 82, 0.24));
+}
+
+.builder-title-card .builder-title-input:focus,
+.builder-title-card .builder-description-input:focus {
+  border-bottom-color: var(--rf-coral, #d66a61);
+  box-shadow: none;
+}
+
+.builder-rsvp-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--rf-ink-soft, #5e5562);
+}
+
+.question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.q-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+  border-left: 4px solid transparent;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: var(--rf-shadow-sm, 0 5px 16px rgba(62, 42, 55, 0.07));
+  transition: border-color 0.15s;
+}
+
+.q-card:focus-within {
+  border-left-color: var(--rf-coral, #d66a61);
+}
+
+.q-card.is-section {
+  background: #f4eee7;
+}
+
+.q-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+  gap: 10px;
+}
+
+.q-card .q-label {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.q-card .q-type {
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid var(--rf-line-strong, rgba(74, 49, 82, 0.24));
+  background: #fffdf9;
+  font: 600 13px 'DM Sans', sans-serif;
+  color: var(--rf-ink, #2d2630);
+}
+
+.q-card .q-help {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 10px;
+}
+
+.q-answer-hint {
+  padding: 10px 2px;
+  font-size: 13px;
+  color: var(--rf-muted, #827681);
+  border-bottom: 1px dashed var(--rf-line-strong, rgba(74, 49, 82, 0.24));
+  width: min(100%, 320px);
+}
+
+.q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.q-option-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 6px;
+}
+
+.q-marker {
+  font-size: 14px;
+  color: var(--rf-muted, #827681);
+  text-align: center;
+}
+
+.q-card .q-option {
+  padding: 8px 12px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.q-add-option {
+  align-self: flex-start;
+  margin-left: 28px;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  font: 700 13px 'DM Sans', sans-serif;
+  color: var(--rf-plum, #4a3152);
+  cursor: pointer;
+}
+
+.q-add-option:hover {
+  color: var(--rf-coral, #d66a61);
+}
+
+.q-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+}
+
+.q-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.q-icon-btn,
+.q-text-btn {
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  font: 700 13px 'DM Sans', sans-serif;
+  color: var(--rf-ink-soft, #5e5562);
+  cursor: pointer;
+}
+
+.q-icon-btn:hover:not(:disabled),
+.q-text-btn:hover {
+  background: rgba(74, 49, 82, 0.07);
+  color: var(--rf-plum-deep, #37243d);
+}
+
+.q-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.q-text-btn.is-danger {
+  color: #a8433c;
+}
+
+.q-required {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.q-required input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--rf-plum, #4a3152);
+}
+
+.add-question-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+}
+
+.add-question-bar .btn-primary {
+  width: auto;
+}
+
+.builder-preview {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.preview-card {
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+.preview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.preview-head small {
+  font-size: 11px;
+  color: var(--rf-muted, #827681);
+}
+
+.preview-title {
+  margin: 0 0 6px;
+  font-family: Fraunces, serif;
+  font-size: 24px;
+  letter-spacing: -0.035em;
+}
+
+.preview-description {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--rf-ink-soft, #5e5562);
+  white-space: pre-wrap;
+}
+
+.preview-description:empty {
+  display: none;
+}
+
+/* Where the save status sits: next to the status pill in the header. */
+.save-state {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rf-muted, #827681);
+}
+
+.save-state.is-saved::before {
+  content: "✓ ";
+  color: var(--rf-mint, #4b9186);
+}
+
+.save-state.is-pending {
+  color: #966437;
+}
+
+.save-state.is-warning {
+  color: #8b5b2d;
+}
+
+.save-state.is-error {
+  color: #a8433c;
+}
+
+/* ------------------------------------------------------------- Responses */
+
+.responses-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.sum-card {
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+  background: rgba(255, 252, 247, 0.8);
+}
+
+.sum-card h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.sum-count {
+  margin: 2px 0 12px;
+  font-size: 12px;
+  color: var(--rf-muted, #827681);
+}
+
+.sum-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sum-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(60px, 1.2fr) 30px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.sum-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--rf-ink-soft, #5e5562);
+}
+
+.sum-bar-track {
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(74, 49, 82, 0.08);
+  overflow: hidden;
+}
+
+.sum-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--rf-plum, #4a3152), var(--rf-coral, #d66a61));
+  min-width: 2px;
+}
+
+.sum-bar-value {
+  text-align: right;
+  font-weight: 700;
+  color: var(--rf-ink, #2d2630);
+}
+
+.sum-big {
+  font-family: Fraunces, serif;
+  font-size: 34px;
+  color: var(--rf-plum, #4a3152);
+  margin-bottom: 8px;
+}
+
+.sum-big small {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--rf-muted, #827681);
+}
+
+.sum-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--rf-muted, #827681);
+}
+
+.sum-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sum-recent li {
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: #f4eee7;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rf-ink-soft, #5e5562);
+  overflow-wrap: anywhere;
+}
+
+.responses-table td {
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------- Share & settings */
+
+.qr-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.qr-row canvas {
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));
+}
+
+.status-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-builder-page .check-row,
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0 4px;
+  cursor: pointer;
+}
+
+.check-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--rf-plum, #4a3152);
+}
+
+.check-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.check-row small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--rf-muted, #827681);
+}
+
+.check-row input:disabled + span {
+  opacity: 0.6;
+}
+
+/* ------------------------------------------------------------- Event: RSVP questions card */
+
+.rsvp-questions-summary {
+  margin-bottom: 14px;
+}
+
+.rsvp-questions-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--rf-ink-soft, #5e5562);
+}
+
+.rsvp-questions-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--rf-muted, #827681);
+}
+
+.rsvp-questions-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------- Responsive */
+
+@media (max-width: 900px) {
+  .builder-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* On narrower screens the preview would sit a long scroll away from the
+     question being edited, so it's dropped; "Preview" in the header opens the
+     real form instead. */
+  .builder-preview {
+    display: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .q-card-top {
+    grid-template-columns: 1fr;
+  }
+
+  .form-submit-row {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .form-submit-row .btn-primary {
+    width: 100%;
+  }
+
+  .form-row-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sum-bar {
+    grid-template-columns: minmax(0, 1fr) 30px;
+  }
+
+  .sum-bar-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

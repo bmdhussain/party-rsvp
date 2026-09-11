@@ -113,7 +113,7 @@
           <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
           <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile" id="stat-waitlist-tile" style="display:none;"><div class="num" id="stat-waitlist">0</div><div class="label">Waitlisted</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
           <div class="guest-list-heading"><h3>Guest list</h3><span>Private host view</span></div>
-          <div class="table-scroll"><table class="guest-table"><thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Replied</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
+          <div class="table-scroll"><table class="guest-table"><thead id="guest-table-head"><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Replied</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
           <div class="empty-note" id="guest-empty" style="display:none;">No replies yet — <a href="#" data-goto="share">share your invitation</a> to get the first one.</div>
         </section>
 
@@ -217,6 +217,12 @@
           <div id="faq-editor-list" class="faq-editor-list"></div>
           <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
           <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="studio-card rsvp-questions-card" id="rsvp-questions-card">
+          <div class="studio-card-heading"><div><span class="section-kicker">RSVP questions</span><h2>Ask guests a little more</h2><p>Dietary needs, plus-one names, song requests — anything you like. Asked on the RSVP form, only of guests who are coming. Answers show up in your guest list and export.</p></div></div>
+          <div id="rsvp-questions-summary" class="rsvp-questions-summary"></div>
+          <div class="rsvp-questions-actions" id="rsvp-questions-actions"></div>
         </section>
 
         <section class="studio-card danger-zone">

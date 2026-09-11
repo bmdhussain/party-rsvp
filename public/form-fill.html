@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <!--HEAD-->
+  <link rel="stylesheet" href="/forms.css" />
+</head>
+<body>
+  <div class="wrap narrow form-fill-page">
+    <!--HEADER-->
+
+    <main>
+      <div class="draft-preview-banner" id="form-draft-banner" hidden>
+        <div><strong>Preview — this form is a draft.</strong><span>Only you can see it. Publish it to start collecting responses.</span></div>
+        <a class="btn btn-primary btn-small" id="form-manage-link" href="#">Back to the builder</a>
+      </div>
+
+      <article class="card form-card" id="form-card">
+        <header class="form-card-head">
+          <div class="eyebrow">Form</div>
+          <h1 id="form-title"><!--SLOT:form-title--></h1>
+          <p class="form-description" id="form-description"></p>
+          <p class="form-required-note" id="form-required-note" hidden><span class="fq-req" aria-hidden="true">*</span> Required</p>
+        </header>
+
+        <div class="form-unavailable" id="form-unavailable" hidden></div>
+
+        <form id="fill-form" novalidate hidden>
+          <div class="error-msg form-error-summary" id="form-error-summary" role="alert"></div>
+          <div id="form-questions" class="form-questions"></div>
+          <!-- Hidden from people; bots fill every field they find. -->
+          <div class="hp-field" aria-hidden="true"><label for="hp-website">Website</label><input type="text" id="hp-website" name="website" tabindex="-1" autocomplete="off" /></div>
+          <div class="form-submit-row">
+            <button type="submit" class="btn btn-primary" id="form-submit">Submit</button>
+            <button type="button" class="btn btn-ghost btn-small" id="form-clear">Clear form</button>
+          </div>
+        </form>
+
+        <div class="form-done" id="form-done" hidden>
+          <div class="form-done-mark" aria-hidden="true">✓</div>
+          <h2>Thanks — your response is in.</h2>
+          <p id="form-done-message"></p>
+          <button type="button" class="btn btn-ghost btn-small" id="form-again">Submit another response</button>
+        </div>
+      </article>
+
+      <p class="form-footnote">Never share passwords or payment details through a form. <a href="/forms/new">Make your own form →</a></p>
+    </main>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/form-render.js"></script>
+  <script src="/form-fill.js"></script>
+</body>
+</html>

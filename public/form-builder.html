@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+  <!--HEAD-->
+  <link rel="stylesheet" href="/forms.css" />
+</head>
+<body>
+  <div class="wrap studio-page app-page form-builder-page" data-initial-tab="<!--SLOT:initial-tab-->" data-form-kind="<!--SLOT:form-kind-->">
+    <!--HEADER-->
+    <!--WORKSPACE-->
+
+    <div id="builder-loading" class="empty-note">Loading your form…</div>
+    <div id="builder-error" class="card" hidden><p>This form couldn't be loaded. It may have been deleted.</p><a class="btn btn-primary btn-small" href="/forms">Back to forms</a></div>
+
+    <!-- ============================================================ Questions -->
+    <section class="tab-panel" data-tab-panel="questions" aria-label="Questions" hidden>
+      <div class="builder-notice" id="builder-responses-notice" hidden></div>
+      <div class="builder-layout">
+        <div class="builder-main">
+          <section class="studio-card builder-title-card">
+            <label class="sr-only" for="form-title-input">Form title</label>
+            <input type="text" id="form-title-input" class="builder-title-input" maxlength="150" placeholder="Form title" />
+            <label class="sr-only" for="form-description-input">Description</label>
+            <textarea id="form-description-input" class="builder-description-input" maxlength="2000" rows="2" placeholder="Description (optional) — tell people what this form is for"></textarea>
+            <p class="builder-rsvp-note" id="builder-rsvp-note" hidden>These questions appear on your invitation's RSVP form, right after name, email and headcount. Guests who reply "can't make it" aren't asked them.</p>
+          </section>
+
+          <div id="question-list" class="question-list" aria-label="Questions"></div>
+
+          <div class="add-question-bar">
+            <button type="button" class="btn btn-primary" id="add-question-btn">+ Add question</button>
+            <button type="button" class="btn btn-ghost btn-small" id="add-section-btn">+ Add a section heading</button>
+          </div>
+        </div>
+
+        <aside class="builder-preview" aria-label="Live preview">
+          <div class="studio-card preview-card">
+            <div class="preview-head"><span class="section-kicker">Live preview</span><small>Exactly what people will see</small></div>
+            <h3 class="preview-title" id="preview-title"></h3>
+            <p class="preview-description" id="preview-description"></p>
+            <div id="preview-questions" class="form-questions"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================ Responses -->
+    <section class="tab-panel" data-tab-panel="responses" aria-label="Responses" hidden>
+      <section class="studio-card responses-card">
+        <div class="studio-card-heading">
+          <div><span class="section-kicker">Responses</span><h2 id="responses-heading">Responses</h2><p id="responses-subtitle"></p></div>
+          <a class="btn btn-ghost btn-small" id="export-responses" href="#">Export CSV</a>
+        </div>
+        <nav class="segmented-tabs" id="responses-view" aria-label="Response view">
+          <a href="#summary" data-view="summary" class="is-active" aria-current="page">Summary</a>
+          <a href="#individual" data-view="individual">All responses</a>
+        </nav>
+        <div id="responses-summary" class="responses-summary"></div>
+        <div id="responses-individual" hidden>
+          <div class="table-scroll"><table class="guest-table responses-table"><thead id="responses-thead"></thead><tbody id="responses-tbody"></tbody></table></div>
+        </div>
+        <div class="empty-state" id="responses-empty" hidden><strong>No responses yet.</strong><p id="responses-empty-hint">Share the form to start collecting them.</p></div>
+      </section>
+    </section>
+
+    <!-- ============================================================ Share -->
+    <section class="tab-panel" data-tab-panel="share" aria-label="Share" hidden>
+      <div class="share-draft-notice" id="form-share-draft" hidden>
+        <div><strong>Publish before you share.</strong><span>Until then, anyone opening the link sees "this form isn't open yet".</span></div>
+        <button type="button" class="btn btn-primary btn-small" data-form-publish>Publish form</button>
+      </div>
+      <section class="studio-card share-card">
+        <div class="studio-card-heading"><div><span class="section-kicker">Share</span><h2>Send people the link</h2><p>They open it on any phone or computer and fill it in — no account, no app.</p></div></div>
+        <div class="share-link-row"><input type="text" id="form-share-url" readonly aria-label="Form link" /><button type="button" class="btn btn-primary btn-small" id="form-copy-link">Copy link</button></div>
+        <div class="share-buttons">
+          <a class="btn btn-ghost share-whatsapp" id="form-whatsapp" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
+          <a class="btn btn-ghost" id="form-email" href="#">Share by email</a>
+        </div>
+      </section>
+      <section class="studio-card qr-card">
+        <div class="studio-card-heading compact"><div><span class="section-kicker">In person</span><h2>QR code</h2><p>Print it or put it on a slide — people scan it to open the form.</p></div></div>
+        <div class="qr-row"><canvas id="form-qr" aria-label="QR code for the form link"></canvas><a class="btn btn-ghost btn-small" id="form-qr-download" href="#" download="form-qr.png">Download QR code</a></div>
+      </section>
+    </section>
+
+    <!-- ============================================================ Settings -->
+    <section class="tab-panel" data-tab-panel="settings" aria-label="Settings" hidden>
+      <div class="settings-grid">
+        <section class="studio-card inspector-card">
+          <div class="studio-card-heading compact"><div><span class="section-kicker">Status</span><h2 id="form-status-title">Draft</h2></div></div>
+          <p class="publish-copy" id="form-status-copy"></p>
+          <div class="error-msg" id="form-status-error"></div>
+          <div class="status-actions">
+            <button type="button" class="btn btn-primary btn-small" id="form-publish-btn" data-form-publish>Publish form</button>
+            <button type="button" class="btn btn-ghost btn-small" id="form-close-btn">Stop accepting responses</button>
+            <button type="button" class="btn btn-ghost btn-small" id="form-unpublish-btn">Unpublish</button>
+          </div>
+        </section>
+
+        <section class="studio-card inspector-card">
+          <div class="studio-card-heading compact"><div><span class="section-kicker">Responses</span><h2>Rules</h2></div></div>
+          <form id="form-settings" novalidate>
+            <label for="set-confirmation">Message after someone submits</label>
+            <textarea id="set-confirmation" maxlength="1000" placeholder="Thanks — we'll be in touch soon."></textarea>
+            <label class="check-row"><input type="checkbox" id="set-one-per-email" /><span><strong>One response per email address</strong><small id="set-one-per-email-hint">Uses the form's email question.</small></span></label>
+            <label for="set-limit">Stop after this many responses</label>
+            <input type="number" id="set-limit" min="1" step="1" placeholder="No limit" />
+            <label for="set-closes">Close automatically on</label>
+            <input type="datetime-local" id="set-closes" />
+            <div class="hint">Leave blank to keep the form open until you close it.</div>
+            <div class="inspector-save"><button type="submit" class="btn btn-primary btn-small">Save rules</button></div>
+            <div class="save-status" id="settings-status" role="status" aria-live="polite"></div>
+          </form>
+        </section>
+      </div>
+
+      <section class="studio-card danger-zone">
+        <div class="studio-card-heading compact"><div><span class="section-kicker">Manage</span><h2>This form</h2></div></div>
+        <div class="danger-row"><div><strong>Duplicate</strong><small>Copy the questions and rules into a new draft form. Responses aren't copied.</small></div><button type="button" class="btn btn-ghost btn-small" id="form-duplicate-btn">Duplicate</button></div>
+        <div class="danger-row"><div><strong>Delete form</strong><small>Permanently removes the form and every response. This can't be undone.</small></div><button type="button" class="btn btn-danger btn-small" id="form-delete-btn">Delete</button></div>
+        <div class="error-msg" id="form-manage-error"></div>
+      </section>
+    </section>
+
+    <!--FOOTER-->
+  </div>
+
+  <script src="/form-render.js"></script>
+  <script src="/form-builder.js"></script>
+</body>
+</html>
