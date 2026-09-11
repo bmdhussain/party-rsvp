@@ -6,6 +6,7 @@
   <title>You're Invited!</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
 </head>
 <body>
@@ -40,6 +41,7 @@
 
     <div class="share-row">
       <button class="btn btn-ghost" id="copy-link-btn">Copy invite link to share</button>
+      <a class="btn btn-ghost" id="add-calendar-btn" href="#">Add to calendar</a>
     </div>
 
     <div class="capacity-strip" id="capacity-strip" style="display:none;" aria-live="polite"></div>
@@ -95,6 +97,10 @@
         <div class="big-emoji" id="success-emoji">🥳</div>
         <p id="success-text">Thanks! Your RSVP is in.</p>
         <p class="success-note" id="success-note"></p>
+        <div class="success-actions" id="success-actions" style="display:none;">
+          <a class="btn btn-primary btn-small" id="success-ticket-btn" href="#">View your ticket</a>
+          <a class="btn btn-ghost btn-small" id="success-calendar-btn" href="#">Add to calendar</a>
+        </div>
       </div>
     </div>
 

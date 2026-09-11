@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browse Events</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
+      <nav class="header-nav"><a href="/" class="btn btn-ghost btn-small">Host an event</a></nav>
+    </header>
+
+    <div class="browse-hero">
+      <div>
+        <div class="eyebrow">What's on</div>
+        <h1>Find something worth turning up to.</h1>
+        <p>Open invitations from hosts who chose to share them publicly.</p>
+      </div>
+    </div>
+
+    <section class="browse-tools">
+      <input class="template-search browse-search" id="browse-search" type="search" placeholder="Search by name, place, or description" aria-label="Search events" />
+      <div class="template-filters" id="browse-categories" role="tablist" aria-label="Category filters"></div>
+    </section>
+
+    <div id="browse-results" class="event-collection browse-grid">
+      <div class="empty-note">Loading events…</div>
+    </div>
+
+    <div class="browse-more"><button type="button" class="btn btn-ghost" id="browse-more-btn" style="display:none;">Show more</button></div>
+
+    <footer class="site-footer"><span>Only events their hosts made public appear here.</span><a href="/"><span class="footer-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a></footer>
+  </div>
+
+  <script src="/browse.js"></script>
+</body>
+</html>

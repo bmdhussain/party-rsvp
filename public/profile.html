@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Profile</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header">
+      <a class="brand" href="/"><span class="brand-mark">R</span><span class="brand-wordmark"><span class="brand-rsvp">RSVP</span><span class="brand-for">for</span></span></a>
+      <nav class="header-nav"><a href="/browse" class="btn btn-ghost btn-small">Browse events</a><a href="/" class="btn btn-ghost btn-small">Host an event</a></nav>
+    </header>
+
+    <div id="profile-loading" class="empty-note">Loading…</div>
+
+    <div id="profile-missing" class="card" style="display:none;">
+      <h2>No host here</h2>
+      <p class="hint">This handle doesn't exist, or the host hasn't made their profile public.</p>
+      <a class="btn btn-primary" href="/browse">Browse public events</a>
+    </div>
+
+    <div id="profile-body" style="display:none;">
+      <section class="profile-hero">
+        <div class="profile-avatar" id="profile-avatar" aria-hidden="true"></div>
+        <div class="profile-identity">
+          <h1 id="profile-name"></h1>
+          <div class="profile-handle" id="profile-handle"></div>
+          <p class="profile-bio" id="profile-bio"></p>
+          <div class="profile-stats" id="profile-stats"></div>
+        </div>
+      </section>
+
+      <section class="studio-section" id="upcoming-section">
+        <div class="section-heading">
+          <div><span class="section-kicker">Coming up</span><h2>Upcoming events</h2></div>
+          <span class="section-count" id="upcoming-count"></span>
+        </div>
+        <div id="upcoming-list" class="event-collection browse-grid"></div>
+      </section>
+
+      <section class="studio-section" id="past-section" style="display:none;">
+        <div class="section-heading">
+          <div><span class="section-kicker">Previously</span><h2>Past events</h2></div>
+          <span class="section-count" id="past-count"></span>
+        </div>
+        <div id="past-list" class="event-collection browse-grid is-past"></div>
+      </section>
+    </div>
+
+    <footer class="site-footer"><span>Public host profile</span><a href="/browse">Browse all events</a></footer>
+  </div>
+
+  <script src="/profile.js"></script>
+</body>
+</html>

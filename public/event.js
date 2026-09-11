@@ -56,6 +56,12 @@ async function loadEvent() {
     renderCapacity(event);
     renderFaqs(event.faqs);
 
+    const calendarUrl = `/api/events/${SLUG}/calendar.ics`;
+    document.getElementById('add-calendar-btn').href = calendarUrl;
+    document.getElementById('success-calendar-btn').href = calendarUrl;
+    // Without a date there's no calendar entry to make.
+    if (!event.event_date) document.getElementById('add-calendar-btn').style.display = 'none';
+
     if (event.inviteOnly) {
       document.getElementById('invite-only-note').style.display = 'block';
     }
@@ -258,6 +264,13 @@ function setupForm() {
           ? 'Your reply has been updated.'
           : 'Thanks! Your RSVP is in.';
         document.getElementById('success-note').textContent = '';
+      }
+
+      // A ticket is only worth offering to someone who's actually coming —
+      // including the waitlist, whose ticket activates if they get promoted.
+      if (data.ticketUrl && payload.attending === 'yes') {
+        document.getElementById('success-ticket-btn').href = data.ticketUrl;
+        document.getElementById('success-actions').style.display = 'flex';
       }
 
       loadComments();

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RSVP</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
+</head>
+<body class="embed-body">
+  <div class="embed-card" id="embed-card">
+    <div id="embed-loading" class="empty-note">Loading…</div>
+
+    <div id="embed-missing" style="display:none;">
+      <strong>This invitation isn't available.</strong>
+    </div>
+
+    <div id="embed-content" style="display:none;">
+      <div class="embed-head">
+        <div class="embed-eyebrow">You're invited</div>
+        <h1 id="embed-name"></h1>
+        <div class="embed-meta" id="embed-date"></div>
+        <div class="embed-meta" id="embed-location"></div>
+        <div class="embed-social" id="embed-social"></div>
+      </div>
+
+      <form id="embed-form" class="embed-form">
+        <input type="text" id="embed-guest-name" required maxlength="100" placeholder="Your name" aria-label="Your name" />
+        <input type="email" id="embed-email" required maxlength="200" placeholder="you@example.com" aria-label="Your email" />
+        <div class="embed-choice">
+          <label><input type="radio" name="embed-attending" value="yes" checked /><span>I'm in</span></label>
+          <label><input type="radio" name="embed-attending" value="no" /><span>Can't make it</span></label>
+        </div>
+        <div class="embed-party" id="embed-party-wrap">
+          <label for="embed-adults">Adults</label><input type="number" id="embed-adults" min="0" value="1" />
+          <label for="embed-kids">Kids</label><input type="number" id="embed-kids" min="0" value="0" />
+        </div>
+        <div class="error-msg" id="embed-error"></div>
+        <button type="submit" class="btn btn-primary btn-small" id="embed-submit">Send RSVP</button>
+      </form>
+
+      <div class="embed-done" id="embed-done" style="display:none;">
+        <strong id="embed-done-title"></strong>
+        <span id="embed-done-note"></span>
+        <a id="embed-ticket-link" href="#" target="_blank" rel="noopener">View your ticket ↗</a>
+      </div>
+
+      <a class="embed-credit" id="embed-credit" href="#" target="_blank" rel="noopener">Powered by RSVPfor</a>
+    </div>
+  </div>
+
+  <script src="/embed.js"></script>
+</body>
+</html>

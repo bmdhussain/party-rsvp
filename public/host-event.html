@@ -6,6 +6,7 @@
   <title>Event Dashboard</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
+  <link rel="stylesheet" href="/platform.css" />
 </head>
 <body>
   <div class="wrap studio-page">
@@ -16,7 +17,7 @@
 
     <div class="studio-topline">
       <div><span class="section-kicker">Invitation studio</span><h1 id="event-title">Loading…</h1><div class="studio-subtitle">A living invitation for your people.</div></div>
-      <div class="studio-top-actions"><button class="btn btn-ghost btn-small" id="refresh-btn">Refresh</button><button class="btn btn-primary btn-small" id="copy-link-btn">Copy invite link</button></div>
+      <div class="studio-top-actions"><a class="btn btn-ghost btn-small" id="checkin-link" href="#">Door check-in</a><button class="btn btn-ghost btn-small" id="refresh-btn">Refresh</button><button class="btn btn-primary btn-small" id="copy-link-btn">Copy invite link</button></div>
     </div>
     <nav class="studio-steps" aria-label="Invitation workflow">
       <button type="button" class="studio-step active" data-studio-stage="choose" aria-current="step"><span>01</span><span class="studio-step-copy"><strong>Choose a look</strong><small>Start with a template or your own artwork</small></span></button>
@@ -76,6 +77,24 @@
              <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
              <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
            </section>
+
+           <section id="analytics-card" class="studio-card analytics-card">
+             <div class="studio-card-heading"><div><span class="section-kicker">How it's going</span><h2>The numbers</h2><p>Replies over time, how full you are, and who actually turned up.</p></div><a class="btn btn-ghost btn-small" id="export-csv-btn" href="#">Export guest list</a></div>
+             <div class="analytics-tiles" id="analytics-tiles"></div>
+             <div class="analytics-trend">
+               <div class="trend-heading"><strong>Replies over time</strong><span id="trend-range"></span></div>
+               <div class="trend-chart" id="trend-chart"></div>
+             </div>
+           </section>
+
+           <section id="embed-panel" class="studio-card embed-panel">
+             <div class="studio-card-heading"><div><span class="section-kicker">Put it anywhere</span><h2>Embed the RSVP</h2><p>Drop the invitation straight onto your own site or blog. Guests reply without leaving the page.</p></div></div>
+             <div class="embed-preview-row">
+               <textarea id="embed-snippet" readonly rows="4" aria-label="Embed code"></textarea>
+               <div class="embed-snippet-actions"><button type="button" class="btn btn-primary btn-small" id="copy-embed-btn">Copy embed code</button><a class="btn btn-ghost btn-small" id="preview-embed-btn" href="#" target="_blank" rel="noopener">Preview ↗</a></div>
+             </div>
+             <div class="hint">The box resizes itself to fit its content on most sites.</div>
+           </section>
         </main>
 
         <aside class="studio-inspector">
@@ -103,6 +122,20 @@
               <div class="invite-add-row"><button type="button" class="btn btn-ghost btn-small" id="add-invites-btn">Add to guest list</button><button type="button" class="btn btn-ghost btn-small" id="email-invites-btn">Email guest list</button></div><div class="error-msg" id="invite-error"></div>
               <div id="invite-table-wrap" style="margin-top:16px;"><div class="table-scroll"><table class="guest-table"><thead><tr><th>Email</th><th>Status</th><th></th></tr></thead><tbody id="invite-table-body"></tbody></table></div><div class="empty-note" id="invite-empty" style="display:none;">No invited emails yet.</div></div>
             </div>
+          </section>
+
+          <section class="studio-card inspector-card discovery-card">
+            <div class="studio-card-heading compact"><div><span class="section-kicker">Discovery</span><h2>Who can find it?</h2></div><span class="inspector-step">03</span></div>
+            <div class="attending-toggle">
+              <label style="margin:0;"><input type="radio" name="visibility" value="unlisted" checked /><div class="opt"><strong>Link only</strong><small>Invisible unless you share it</small></div></label>
+              <label style="margin:0;"><input type="radio" name="visibility" value="public" /><div class="opt"><strong>Listed publicly</strong><small>Appears on the browse page</small></div></label>
+            </div>
+            <div id="category-row" style="display:none; margin-top:14px;">
+              <label for="edit-category">Category</label>
+              <select id="edit-category"><option value="">Choose one…</option></select>
+              <div class="hint">Helps people find it when browsing.</div>
+            </div>
+            <div class="discovery-status" id="discovery-status" role="status" aria-live="polite"></div>
           </section>
         </aside>
         </div>

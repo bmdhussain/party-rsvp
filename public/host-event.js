@@ -326,6 +326,12 @@ function render(data) {
     showEditorPanel(false);
   });
 
+  document.getElementById('checkin-link').href = `/host/${EVENT_ID}/checkin`;
+  document.getElementById('export-csv-btn').href = `/api/events/${EVENT_ID}/guests.csv`;
+  renderDiscovery(data.event);
+  renderEmbedSnippet(data.event);
+  loadAnalytics();
+
   const mode = data.event.invite_mode || 'open';
   document.querySelector(`input[name="invite-mode"][value="${mode}"]`).checked = true;
   document.getElementById('invite-list-section').style.display = mode === 'restricted' ? 'block' : 'none';
@@ -382,9 +388,145 @@ function guestBadge(rsvp) {
     return { cls: 'waiting', label: 'Waitlist', saidYes: true, rowClass: 'is-waitlisted' };
   }
   if (status === 'confirmed') {
+    // Once someone's through the door that's the more useful fact about them.
+    if (rsvp.checked_in_at) {
+      return { cls: 'arrived', label: 'Arrived', saidYes: true, rowClass: 'is-arrived' };
+    }
     return { cls: 'yes', label: 'Coming', saidYes: true, rowClass: '' };
   }
   return { cls: 'no', label: 'No', saidYes: false, rowClass: '' };
+}
+
+// --- Discovery: visibility and category ---
+
+let categoriesLoaded = false;
+
+async function loadCategoryOptions() {
+  if (categoriesLoaded) return;
+  try {
+    const categories = await (await fetch('/api/categories')).json();
+    const select = document.getElementById('edit-category');
+    const current = select.value;
+    select.innerHTML =
+      '<option value="">Choose one…</option>' +
+      categories.map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.label)}</option>`).join('');
+    select.value = current;
+    categoriesLoaded = true;
+  } catch (err) {
+    // Leaving the select with just its placeholder is survivable.
+  }
+}
+
+async function renderDiscovery(event) {
+  const visibility = event.visibility || 'unlisted';
+  const radio = document.querySelector(`input[name="visibility"][value="${visibility}"]`);
+  if (radio) radio.checked = true;
+  document.getElementById('category-row').style.display = visibility === 'public' ? 'block' : 'none';
+
+  await loadCategoryOptions();
+  document.getElementById('edit-category').value = event.category || '';
+  setDiscoveryStatus(
+    visibility === 'public'
+      ? 'Listed on the browse page for anyone to find.'
+      : 'Only people with the link can see this event.'
+  );
+}
+
+function setDiscoveryStatus(message, type = '') {
+  const el = document.getElementById('discovery-status');
+  el.textContent = message;
+  el.className = `discovery-status ${type}`;
+}
+
+// Visibility and category save on change rather than waiting for the details
+// form — they're switches, and a switch that needs a separate Save is a trap.
+async function saveDiscovery(patch) {
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('edit-name').value,
+        date: document.getElementById('edit-date').value,
+        location: document.getElementById('edit-location').value,
+        description: document.getElementById('edit-description').value,
+        ...patch,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save.');
+    return true;
+  } catch (err) {
+    setDiscoveryStatus(err.message, 'error');
+    return false;
+  }
+}
+
+// --- Analytics ---
+
+async function loadAnalytics() {
+  try {
+    const res = await fetch(`/api/events/${EVENT_ID}/analytics`);
+    if (!res.ok) throw new Error('unavailable');
+    const a = await res.json();
+
+    const tiles = [
+      { num: a.summary.replies, label: 'Replies' },
+      a.summary.acceptanceRate !== null ? { num: `${a.summary.acceptanceRate}%`, label: 'Said yes' } : null,
+      a.capacity.fillRate !== null ? { num: `${a.capacity.fillRate}%`, label: 'Capacity filled' } : null,
+      a.checkIn.rate !== null && a.checkIn.guests ? { num: `${a.checkIn.rate}%`, label: 'Turned up' } : null,
+      a.checkIn.guests ? { num: a.checkIn.guests, label: 'Checked in' } : null,
+    ].filter(Boolean);
+
+    document.getElementById('analytics-tiles').innerHTML = tiles
+      .map((t) => `<div class="stat-tile"><div class="num">${escapeHtml(String(t.num))}</div><div class="label">${escapeHtml(t.label)}</div></div>`)
+      .join('');
+
+    renderTrend(a.trend);
+  } catch (err) {
+    document.getElementById('analytics-tiles').innerHTML =
+      '<div class="empty-note">Numbers will appear once guests start replying.</div>';
+  }
+}
+
+// A plain CSS bar chart — a charting library would be a lot of weight for one
+// small graph, and this scales fine to the handful of days an invite runs for.
+function renderTrend(trend) {
+  const chart = document.getElementById('trend-chart');
+  const range = document.getElementById('trend-range');
+  if (!trend.length) {
+    chart.innerHTML = '<div class="empty-note">No replies yet.</div>';
+    range.textContent = '';
+    return;
+  }
+
+  const peak = Math.max(...trend.map((d) => d.replies), 1);
+  range.textContent =
+    trend.length === 1
+      ? new Date(`${trend[0].day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      : `${new Date(`${trend[0].day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${new Date(`${trend[trend.length - 1].day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+
+  chart.innerHTML = trend
+    .map((d) => {
+      const label = new Date(`${d.day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const height = Math.round((d.replies / peak) * 100);
+      return `
+        <div class="trend-bar" title="${escapeHtml(label)}: ${d.replies} ${d.replies === 1 ? 'reply' : 'replies'}, ${d.confirmed} confirmed">
+          <div class="trend-bar-track"><i style="height:${height}%"></i></div>
+          <span class="trend-bar-label">${escapeHtml(label)}</span>
+        </div>`;
+    })
+    .join('');
+}
+
+// --- Embed ---
+
+function renderEmbedSnippet(event) {
+  const origin = window.location.origin;
+  const url = `${origin}/embed/${encodeURIComponent(event.slug)}`;
+  const snippet = `<iframe src="${url}" title="RSVP to ${event.name}" width="100%" height="520" style="border:0;max-width:460px;" loading="lazy"></iframe>`;
+  document.getElementById('embed-snippet').value = snippet;
+  document.getElementById('preview-embed-btn').href = url;
 }
 
 // Spells out what the cap means right now, so the host isn't left doing the
@@ -1020,6 +1162,45 @@ document.getElementById('add-faq-btn').addEventListener('click', () => {
 });
 
 document.getElementById('save-faq-btn').addEventListener('click', (e) => saveFaqs(e.currentTarget));
+
+document.querySelectorAll('input[name="visibility"]').forEach((radio) => {
+  radio.addEventListener('change', async () => {
+    if (!radio.checked) return;
+    const isPublic = radio.value === 'public';
+    document.getElementById('category-row').style.display = isPublic ? 'block' : 'none';
+    setDiscoveryStatus('Saving…');
+    const ok = await saveDiscovery({ visibility: radio.value });
+    if (ok) {
+      setDiscoveryStatus(
+        isPublic
+          ? 'Now listed on the browse page for anyone to find.'
+          : 'Back to link-only — removed from the browse page.',
+        'success'
+      );
+    }
+  });
+});
+
+document.getElementById('edit-category').addEventListener('change', async (e) => {
+  setDiscoveryStatus('Saving…');
+  const ok = await saveDiscovery({ category: e.target.value });
+  if (ok) setDiscoveryStatus(e.target.value ? 'Category saved.' : 'Category cleared.', 'success');
+});
+
+document.getElementById('copy-embed-btn').addEventListener('click', async (e) => {
+  const button = e.currentTarget;
+  const snippet = document.getElementById('embed-snippet').value;
+  const original = button.textContent;
+  try {
+    await navigator.clipboard.writeText(snippet);
+    button.textContent = '✅ Copied!';
+  } catch (err) {
+    // Clipboard access can be refused; selecting the text is the next best thing.
+    document.getElementById('embed-snippet').select();
+    button.textContent = 'Press ⌘/Ctrl+C';
+  }
+  setTimeout(() => (button.textContent = original), 2200);
+});
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await fetch('/auth/logout', { method: 'POST' });
