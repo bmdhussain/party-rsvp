@@ -5,7 +5,8 @@
   "description": "A multi-tenant event RSVP platform: hosts sign in with Google or Facebook to create events and share a link",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node tests/run.js"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.3",
