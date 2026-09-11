@@ -20,6 +20,65 @@
   display: none !important;
 }
 
+/* ------------------------------------------------------------- Fixes to base styles */
+
+/* styles.css gives an active step's number badge a dark background with
+   `.studio-step.active > span`, which also matches the step's text label and
+   turned it into a black bar. Put the label back to plain text. */
+.studio-step.active > .studio-step-copy,
+.studio-step.completed > .studio-step-copy {
+  background: transparent;
+  color: inherit;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.studio-step.completed > .studio-step-copy::after {
+  content: none;
+}
+
+/* The two-line option layout existed only for the access card; the discovery
+   card uses the same toggle and needs the same treatment. */
+.discovery-card .attending-toggle {
+  gap: 7px;
+}
+
+.discovery-card .attending-toggle .opt {
+  text-align: left;
+  padding: 11px;
+  border-radius: 11px;
+  background: #faf9f7;
+  font-size: 11px;
+}
+
+.discovery-card .attending-toggle input:checked + .opt {
+  background: #eee8df;
+  border-color: #b56e45;
+  box-shadow: none;
+}
+
+.discovery-card .opt strong,
+.discovery-card .opt small {
+  display: block;
+}
+
+.discovery-card .opt small {
+  font-size: 10px;
+  color: #8d8589;
+  font-weight: 400;
+  margin-top: 3px;
+}
+
+/* Card artwork is a link; without this, the "no look yet" placeholder picked
+   up default link underlining and colour. */
+a.event-card-art,
+a.browse-card-art {
+  text-decoration: none;
+  color: inherit;
+}
+
 /* ------------------------------------------------------------- Header */
 
 .app-header {
