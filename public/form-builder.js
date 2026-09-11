@@ -85,6 +85,12 @@ window.addEventListener('popstate', () => showTab(tabFromPath()));
 
 const saveState = { timer: null, inFlight: false, again: false, dirty: false };
 
+function savedLabel() {
+  // Saying "saved" alone leaves the real question open: is it live yet?
+  if (!form || KIND === 'rsvp') return 'Saved';
+  return form.status === 'draft' ? 'Saved as draft' : 'Saved — changes are live';
+}
+
 function setSaveState(text, cls = '') {
   const pill = $('form-status-pill');
   let el = $('save-state');
@@ -148,7 +154,7 @@ async function save() {
     if (!res.ok) throw new Error(data.error || 'Could not save.');
     form = data;
     saveState.dirty = false;
-    setSaveState('All changes saved', 'is-saved');
+    setSaveState(savedLabel(), 'is-saved');
     const heading = $('form-title-heading');
     if (heading && KIND === 'standalone') heading.textContent = data.title;
   } catch (err) {
@@ -513,6 +519,19 @@ function renderStatus() {
     pill.className = `status-pill ${s === 'open' ? 'is-live' : s === 'closed' ? 'is-past' : 'is-draft'}`;
   }
 
+  // The same publish control as the event workspace, in the same place, so it's
+  // there on the Questions screen rather than buried in another tab.
+  const headerPublish = $('header-form-publish');
+  const headerCopy = $('header-form-copy');
+  const headerPreview = $('header-form-preview');
+  if (headerPublish) headerPublish.hidden = s !== 'draft';
+  if (headerCopy) headerCopy.hidden = s === 'draft';
+  if (headerPreview) headerPreview.textContent = s === 'draft' ? 'Preview ↗' : 'Open form ↗';
+  // Re-label the save indicator: the same edit means something different once
+  // the form is live.
+  const state = $('save-state');
+  if (state && state.classList.contains('is-saved')) state.textContent = savedLabel();
+
   const st = form.settings || {};
   $('set-confirmation').value = st.confirmationMessage || '';
   $('set-one-per-email').checked = Boolean(st.onePerEmail);
@@ -567,6 +586,19 @@ document.addEventListener('click', async (e) => {
     btn.disabled = true;
     await post('/publish', { published: true });
     await refreshForm();
+    window.RSVPfor?.toast('Published — your form is live and ready to share.', {
+      action: {
+        label: 'Copy link',
+        onClick: (b) => {
+          navigator.clipboard
+            .writeText(form.shareUrl)
+            .then(() => {
+              b.textContent = 'Copied!';
+            })
+            .catch(() => window.prompt('Copy this link:', form.shareUrl));
+        },
+      },
+    });
     showTab('share', { push: true });
   } catch (err) {
     statusError(err.message);
@@ -580,6 +612,7 @@ $('form-unpublish-btn')?.addEventListener('click', async () => {
   try {
     await post('/publish', { published: false });
     await refreshForm();
+    window.RSVPfor?.toast('Back to draft — only you can see it now.', { kind: 'info' });
   } catch (err) {
     statusError(err.message);
   }
@@ -587,8 +620,13 @@ $('form-unpublish-btn')?.addEventListener('click', async () => {
 
 $('form-close-btn')?.addEventListener('click', async () => {
   try {
-    await post('/close', { closed: !form.closedAt });
+    const wasOpen = !form.closedAt;
+    await post('/close', { closed: wasOpen });
     await refreshForm();
+    window.RSVPfor?.toast(
+      wasOpen ? 'Closed — the form no longer takes responses.' : 'Open again — the form is taking responses.',
+      { kind: 'info' }
+    );
   } catch (err) {
     statusError(err.message);
   }
@@ -615,12 +653,25 @@ $('form-settings')?.addEventListener('submit', async (e) => {
     if (!res.ok) throw new Error(data.error || 'Could not save.');
     form = data;
     renderStatus();
-    status.textContent = 'Saved.';
+    status.textContent = savedLabel();
     status.className = 'save-status success';
+    window.RSVPfor?.toast(savedLabel());
   } catch (err) {
     status.textContent = err.message;
     status.className = 'save-status';
   }
+});
+
+$('header-form-copy')?.addEventListener('click', async (e) => {
+  const btn = e.currentTarget;
+  const original = btn.textContent;
+  try {
+    await navigator.clipboard.writeText(form.shareUrl);
+    btn.textContent = 'Copied!';
+  } catch (err) {
+    window.prompt('Copy this link:', form.shareUrl);
+  }
+  setTimeout(() => (btn.textContent = original), 1800);
 });
 
 $('form-copy-link')?.addEventListener('click', async (e) => {
@@ -691,6 +742,6 @@ $('form-delete-btn')?.addEventListener('click', async () => {
   }
   renderEditor();
   renderStatus();
-  setSaveState('All changes saved', 'is-saved');
+  setSaveState(savedLabel(), 'is-saved');
   showTab(document.querySelector('[data-initial-tab]')?.dataset.initialTab || tabFromPath());
 })();

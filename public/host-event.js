@@ -369,9 +369,22 @@ function renderStatus(data) {
     : data.publishBlocker
       ? `Only you can see this draft. ${data.publishBlocker}`
       : 'Only you can see this invitation. Publish it when it looks right — you can keep editing afterwards.';
-  const publishBtn = document.getElementById('publish-btn');
-  publishBtn.hidden = live;
-  publishBtn.disabled = Boolean(data.publishBlocker);
+  // The status card explains what draft means; the buttons that act on it are
+  // the header (always there) and the next-step card (the guided path), so it
+  // doesn't repeat a third Publish of its own.
+
+  // The same control in the workspace header, so publishing is one click away
+  // from whichever tab the host is on — not hidden inside a tab.
+  const headerPublish = document.getElementById('header-publish-btn');
+  const headerCopy = document.getElementById('copy-link-btn');
+  const headerPreview = document.getElementById('header-preview-link');
+  if (headerPublish) {
+    headerPublish.hidden = live;
+    headerPublish.disabled = Boolean(data.publishBlocker);
+    headerPublish.title = data.publishBlocker || '';
+  }
+  if (headerCopy) headerCopy.hidden = !live;
+  if (headerPreview) headerPreview.textContent = live ? 'View guest page ↗' : 'Preview ↗';
 
   document.getElementById('share-draft-notice').hidden = live;
   document.getElementById('unpublish-row').hidden = !live;
@@ -486,8 +499,25 @@ async function setPublished(published) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not change the status.');
     await loadDashboard();
-    // Straight from publishing to sharing is the natural next move.
-    if (published) showTab('share', { push: true });
+    if (published) {
+      window.RSVPfor?.toast('Published — your invitation is live and ready to share.', {
+        action: {
+          label: 'Copy link',
+          onClick: (btn) => {
+            navigator.clipboard
+              .writeText(lastData.event.shareUrl)
+              .then(() => {
+                btn.textContent = 'Copied!';
+              })
+              .catch(() => window.prompt('Copy this link:', lastData.event.shareUrl));
+          },
+        },
+      });
+      // Straight from publishing to sharing is the natural next move.
+      showTab('share', { push: true });
+    } else {
+      window.RSVPfor?.toast('Back to draft — only you can see it now.', { kind: 'info' });
+    }
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.style.display = 'block';
@@ -612,6 +642,21 @@ function renderRsvpQuestionsCard(data) {
   const summary = document.getElementById('rsvp-questions-summary');
   const actions = document.getElementById('rsvp-questions-actions');
   const rf = data.rsvpForm;
+
+  // The same thing, surfaced on the Overview where hosts actually look — the
+  // Settings card alone was too far down to find.
+  const overviewTitle = document.getElementById('overview-questions-title');
+  const overviewCopy = document.getElementById('overview-questions-copy');
+  const overviewLink = document.getElementById('overview-questions-link');
+  if (overviewTitle && overviewCopy && overviewLink) {
+    const count = rf ? rf.questions.length : 0;
+    overviewTitle.textContent = count ? `${count} extra ${count === 1 ? 'question' : 'questions'}` : 'Ask guests more';
+    overviewCopy.textContent = count
+      ? 'Asked on your RSVP form, of guests who are coming. Answers appear in your guest list.'
+      : 'Dietary needs, plus-one names, anything else — asked on your RSVP form.';
+    overviewLink.textContent = count ? 'Edit questions' : 'Add questions';
+    overviewLink.href = rf ? `/forms/${encodeURIComponent(rf.id)}` : `/forms/new?event=${encodeURIComponent(EVENT_ID)}`;
+  }
   if (!rf) {
     summary.innerHTML = '<p class="rsvp-questions-empty">No extra questions yet — guests just give their name, email and headcount.</p>';
     actions.innerHTML = `<a class="btn btn-primary btn-small" href="/forms/new?event=${encodeURIComponent(EVENT_ID)}">Add RSVP questions</a>`;
@@ -1208,14 +1253,22 @@ document.getElementById('edit-event-form').addEventListener('submit', async (e) 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save changes.');
     // Confirm where the host is looking — the Settings tab — not over on Guests.
+    const live = Boolean(lastData?.event?.published_at);
+    const saved = live ? 'Saved — your changes are live.' : 'Saved as draft.';
     const status = document.getElementById('details-status');
     status.textContent = data.promoted
       ? `Saved. ${data.promoted} ${data.promoted === 1 ? 'guest was' : 'guests were'} moved off the waitlist and emailed.`
-      : 'Saved.';
+      : saved;
     status.className = 'save-status success';
+    const shown = status.textContent;
     setTimeout(() => {
-      if (status.textContent === 'Saved.') status.textContent = '';
+      if (status.textContent === shown) status.textContent = '';
     }, 3000);
+    window.RSVPfor?.toast(
+      data.promoted
+        ? `${saved} ${data.promoted} ${data.promoted === 1 ? 'guest was' : 'guests were'} moved off the waitlist and emailed.`
+        : saved
+    );
     loadDashboard();
   } catch (err) {
     errorBox.textContent = err.message;
