@@ -2715,3 +2715,64 @@ body:has(.ticket-card) .card {
     transform: none;
   }
 }
+
+/* ==========================================================================
+   Post-review fixes (from screenshots at 390px and 1280px)
+   ========================================================================== */
+
+/* Explore's heading used the UI face while every other page title uses the
+   display serif. */
+.browse-hero h1 {
+  font-family: Fraunces, serif;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+@media (max-width: 650px) {
+  /* On phones the nav becomes a sideways-scrolling strip, which left the
+     account menu (Settings, Sign out) clipped off the right edge. Lift it out
+     of the strip and pin it beside the logo. Its containing block is the
+     header, not the scrolling nav, so the nav's overflow no longer clips it. */
+  .app-header {
+    position: relative;
+  }
+
+  .primary-nav .account-menu {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  /* The invitation banner had a fixed viewport-based height, so a 1200×630
+     invitation sat in a small band with large empty areas above and below,
+     pushing the RSVP form far down. Size it to the artwork instead. */
+  .invite-banner {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .invite-banner img {
+    width: 100%;
+    height: auto;
+    max-height: 80vh;
+  }
+}
+
+/* The event description and the no-artwork hero were set in near-white on the
+   light guest background — well under WCAG AA contrast. Use the ink tones. */
+.guest-event-details .desc,
+.hero .desc {
+  color: var(--rf-ink-soft);
+}
+
+.hero,
+.hero h1 {
+  color: var(--rf-plum-deep);
+  text-shadow: none;
+}
+
+.hero .meta {
+  color: var(--rf-ink-soft);
+  opacity: 1;
+}

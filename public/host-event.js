@@ -23,8 +23,19 @@ function showTab(tab, { push = false } = {}) {
   document.querySelectorAll('.workspace-tab[data-tab]').forEach((link) => {
     const active = link.dataset.tab === target;
     link.classList.toggle('is-active', active);
-    if (active) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
+    if (active) {
+      link.setAttribute('aria-current', 'page');
+      // On a phone the tab strip scrolls sideways; bring the current tab into
+      // view so it's clear where you are. Setting scrollLeft (rather than
+      // scrollIntoView) never moves the page itself.
+      const strip = link.parentElement;
+      if (strip && strip.scrollWidth > strip.clientWidth) {
+        const offset = link.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+        strip.scrollLeft += offset - (strip.clientWidth - link.offsetWidth) / 2;
+      }
+    } else {
+      link.removeAttribute('aria-current');
+    }
   });
   if (push && window.location.pathname !== tabUrl(target)) {
     window.history.pushState({ tab: target }, '', tabUrl(target));
