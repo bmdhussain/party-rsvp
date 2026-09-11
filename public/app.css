@@ -2793,3 +2793,13 @@ body:has(.ticket-card) .card {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 650px) {
+  /* With Forms in the nav, the strip overflowed and cut the create button off.
+     Dashboard is also in the account menu, so phones drop it here, and the
+     button shortens to "+ Create" (its accessible name stays "Create event"). */
+  .primary-nav .nav-dashboard,
+  .nav-cta-extra {
+    display: none;
+  }
+}

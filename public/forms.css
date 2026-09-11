@@ -1061,3 +1061,8 @@
     grid-row: 2;
   }
 }
+
+/* An option nobody picked shows an empty track, not a sliver. */
+.sum-bar-track i[style="width:0%"] {
+  min-width: 0;
+}
