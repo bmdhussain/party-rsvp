@@ -94,15 +94,20 @@ async function run({ base, reporter }) {
       served: preview.status === 200 && og.status === 200,
       size: imageSize(buf),
       bytes: buf.length,
-      credited: Boolean(t.sourceName && t.sourceUrl),
+      // Artwork we drew ourselves needs no credit; anything sourced does.
+      original: t.origin === 'original',
+      credited: t.origin === 'original' ? !t.sourceName : Boolean(t.sourceName && t.sourceUrl),
     });
   }
   check(`all ${cards.length} are served, preview and preview-card alike`, cards.filter((c) => !c.served).map((c) => c.id), []);
   check('all are the 1200x630 the layouts expect', cards.filter((c) => c.size[0] !== 1200 || c.size[1] !== 630).map((c) => c.id), []);
   // The placeholder art this library started with compressed to 7-8KB, because
-  // there was nothing in it but a gradient and a few flat shapes.
-  check('none is placeholder-thin', cards.filter((c) => c.bytes < 60 * 1024).map((c) => c.id), []);
-  check('each credits where its artwork came from', cards.filter((c) => !c.credited).map((c) => c.id), []);
+  // there was nothing in it but a gradient and a few flat shapes. A scan or a
+  // photograph cannot get near that; artwork drawn as flat colour legitimately
+  // can, so it is held to a lower floor rather than exempted.
+  const thin = cards.filter((c) => c.bytes < (c.original ? 18 : 60) * 1024);
+  check('none is placeholder-thin', thin.map((c) => c.id), []);
+  check('each sourced piece credits where it came from', cards.filter((c) => !c.credited).map((c) => c.id), []);
 }
 
 module.exports = { run };
