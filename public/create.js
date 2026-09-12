@@ -11,6 +11,10 @@ const OCCASION_NAMES = {
   dinner: 'Saturday Supper',
   party: 'Baby Shower for Sam',
   wedding: 'Jamie & Rae Are Getting Married',
+  workshop: 'Saturday Pottery Class',
+  community: 'Neighbourhood Clean-up',
+  music: 'Live at the Yard',
+  sports: 'Sunday League Kick-about',
   other: 'Just Because Get-Together',
 };
 

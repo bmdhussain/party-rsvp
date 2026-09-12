@@ -2980,3 +2980,10 @@ body:has(.ticket-card) .card {
     transition: none;
   }
 }
+
+/* The occasion tiles are links styled as cards; without this they pick up the
+   default underline on their heading and caption. */
+.occasion-card,
+.occasion-card:hover {
+  text-decoration: none;
+}

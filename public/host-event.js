@@ -112,7 +112,7 @@ function setStudioStage(stage, { scroll = false } = {}) {
       ? 'Choose a look and save your invitation to carry on.'
       : isLive
         ? 'Your invitation is live. Changes you save here show up for guests straight away.'
-        : 'Saved. The invitation is still a private draft — publish it when you are ready.';
+        : 'Saved. The event page is still a private draft — publish it when you are ready.';
   }
 
   if (!scroll) return;
@@ -365,10 +365,10 @@ function renderStatus(data) {
   // Publish card on the overview.
   document.getElementById('publish-title').textContent = live ? 'Live' : 'Draft';
   document.getElementById('publish-copy').textContent = live
-    ? 'Guests can open the invitation and reply. You can keep editing — changes show up straight away.'
+    ? 'Anyone with the link can open your event page and reply. You can keep editing — changes show up straight away.'
     : data.publishBlocker
       ? `Only you can see this draft. ${data.publishBlocker}`
-      : 'Only you can see this invitation. Publish it when it looks right — you can keep editing afterwards.';
+      : 'Only you can see this event page. Publish it when it looks right — you can keep editing afterwards.';
   // The status card explains what draft means; the buttons that act on it are
   // the header (always there) and the next-step card (the guided path), so it
   // doesn't repeat a third Publish of its own.
@@ -423,7 +423,7 @@ function renderSetup(data) {
   if (!setup.next) {
     next.innerHTML = `
       <span class="section-kicker">All set</span>
-      <h2>Your invitation is out there.</h2>
+      <h2>Your event page is live.</h2>
       <p>${data.totals.attendingCount} ${data.totals.attendingCount === 1 ? 'guest is' : 'guests are'} coming. Keep sharing, or open the door scanner on the day.</p>
       <div class="next-actions"><a class="btn btn-primary" href="${tabUrl('guests')}" data-goto="guests">See guests</a><a class="btn btn-ghost" href="/host/${EVENT_ID}/checkin">Door check-in</a></div>`;
   } else if (setup.next.id === 'publish') {
@@ -431,14 +431,14 @@ function renderSetup(data) {
       <span class="section-kicker">Next step</span>
       <h2>Ready to go live?</h2>
       <p>${escapeHtml(data.publishBlocker || 'Everything essential is in place. Publishing makes the link work for guests — you can keep editing afterwards.')}</p>
-      <div class="next-actions"><button class="btn btn-primary" type="button" data-publish ${data.publishBlocker ? 'disabled' : ''}>Publish invitation</button><a class="btn btn-ghost" href="${escapeHtml(data.event.shareUrl)}" target="_blank" rel="noopener">Preview first ↗</a></div>`;
+      <div class="next-actions"><button class="btn btn-primary" type="button" data-publish ${data.publishBlocker ? 'disabled' : ''}>Publish event</button><a class="btn btn-ghost" href="${escapeHtml(data.event.shareUrl)}" target="_blank" rel="noopener">Preview first ↗</a></div>`;
   } else {
     next.innerHTML = `
       <span class="section-kicker">Next step</span>
       <h2>${escapeHtml(setup.next.label)}</h2>
       <p>${escapeHtml(setup.next.hint)}</p>
       <div class="next-actions"><a class="btn btn-primary" href="${escapeHtml(setup.next.href)}" data-goto="${tabOf(setup.next.href)}">${
-        setup.next.id === 'share' ? 'Share the invitation' : 'Continue'
+        setup.next.id === 'share' ? 'Share it' : 'Continue'
       } →</a></div>`;
   }
 
@@ -500,7 +500,7 @@ async function setPublished(published) {
     if (!res.ok) throw new Error(data.error || 'Could not change the status.');
     await loadDashboard();
     if (published) {
-      window.RSVPfor?.toast('Published — your invitation is live and ready to share.', {
+      window.RSVPfor?.toast('Published — your event page is live and ready to share.', {
         action: {
           label: 'Copy link',
           onClick: (btn) => {

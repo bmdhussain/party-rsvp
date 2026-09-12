@@ -46,7 +46,7 @@ async function run({ base, reporter }) {
   check('the toast helper ships to every page', /function toast\(message/.test(site) && site.includes('localizeTimes, toast'), true);
   const hostJs = await anon.text('/host-event.js');
   const formJs = await anon.text('/form-builder.js');
-  check('publishing an event says it is live and shareable', hostJs.includes('Published — your invitation is live'), true);
+  check('publishing an event says it is live and shareable', hostJs.includes('Published — your event page is live'), true);
   check('publishing a form says the same thing', formJs.includes('Published — your form is live'), true);
   check('unpublishing says the same thing in both', [hostJs, formJs].every((s) => s.includes('Back to draft — only you can see it now.')), true);
   check('saving a draft says so, rather than just "Saved"', hostJs.includes('Saved as draft.') && formJs.includes("'Saved as draft'"), true);

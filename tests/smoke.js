@@ -18,6 +18,14 @@ async function run({ base, reporter }) {
   check('an unknown page is a 404', await anon.status('GET', '/nope'), 404);
   check('the app is kept out of search results', (await anon.text('/robots.txt')).includes('Disallow: /dashboard'), true);
 
+  section('The site says it does both private invitations and public events');
+  const home = await anon.text('/');
+  check('the hero names both', home.includes('Private invitations · public events'), true);
+  check('and says you can list publicly', home.toLowerCase().includes('list it publicly'), true);
+  check('the occasions cover more than celebrations', home.includes('Workshop or class') && home.includes('Community event'), true);
+  check('the shared description mentions both', home.includes('public event pages'), true);
+  check('and so does the page title', home.includes('Invitations, events and RSVPs'), true);
+
   section('Host pages need a sign-in');
   for (const p of ['/dashboard', '/events', '/forms', '/settings']) {
     check(`${p} redirects a signed-out visitor`, await anon.status('GET', p), 302);

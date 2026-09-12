@@ -48,7 +48,7 @@
 
             <section class="studio-card publish-card" id="publish-card">
               <div class="studio-card-heading compact"><div><span class="section-kicker">Status</span><h2 id="publish-title">Draft</h2></div></div>
-              <p class="publish-copy" id="publish-copy">Only you can see this invitation until you publish it.</p>
+              <p class="publish-copy" id="publish-copy">Only you can see this event page until you publish it.</p>
               <div class="error-msg" id="publish-error"></div>
             </section>
 
@@ -119,7 +119,7 @@
           <div class="stats-grid"><div class="stat-tile"><div class="num" id="stat-attending">0</div><div class="label">Coming</div></div><div class="stat-tile"><div class="num" id="stat-adults">0</div><div class="label">Adults</div></div><div class="stat-tile"><div class="num" id="stat-kids">0</div><div class="label">Kids</div></div><div class="stat-tile" id="stat-waitlist-tile" style="display:none;"><div class="num" id="stat-waitlist">0</div><div class="label">Waitlisted</div></div><div class="stat-tile"><div class="num" id="stat-declined">0</div><div class="label">Not this time</div></div></div>
           <div class="guest-list-heading"><h3>Guest list</h3><span>Private host view</span></div>
           <div class="table-scroll"><table class="guest-table"><thead id="guest-table-head"><tr><th>Name</th><th>Email</th><th>Status</th><th>Adults</th><th>Kids</th><th>Message</th><th>Replied</th></tr></thead><tbody id="guest-table-body"></tbody></table></div>
-          <div class="empty-note" id="guest-empty" style="display:none;">No replies yet — <a href="#" data-goto="share">share your invitation</a> to get the first one.</div>
+          <div class="empty-note" id="guest-empty" style="display:none;">No replies yet — <a href="#" data-goto="share">share your event</a> to get the first one.</div>
         </section>
 
         <section id="analytics-card" class="studio-card analytics-card">
@@ -218,7 +218,7 @@
         </div>
 
         <section id="faq-editor" class="studio-card faq-editor">
-          <div class="studio-card-heading"><div><span class="section-kicker">Good to know</span><h2>Answer it once</h2><p>The questions every guest asks — parking, dress code, whether to bring anything. These appear on the invitation page.</p></div></div>
+          <div class="studio-card-heading"><div><span class="section-kicker">Good to know</span><h2>Answer it once</h2><p>The questions every guest asks — parking, dress code, whether to bring anything. These appear on your event page.</p></div></div>
           <div id="faq-editor-list" class="faq-editor-list"></div>
           <div class="faq-editor-actions"><button type="button" class="btn btn-ghost btn-small" id="add-faq-btn">Add a question</button><button type="button" class="btn btn-primary btn-small" id="save-faq-btn">Save answers</button></div>
           <div class="faq-status" id="faq-status" role="status" aria-live="polite"></div>
@@ -233,7 +233,7 @@
         <section class="studio-card danger-zone">
           <div class="studio-card-heading compact"><div><span class="section-kicker">Manage</span><h2>This event</h2></div></div>
           <div class="danger-row"><div><strong>Host it again</strong><small>Copy this event into a new draft with the same look, details and FAQ.</small></div><button type="button" class="btn btn-ghost btn-small" id="duplicate-btn">Duplicate</button></div>
-          <div class="danger-row" id="unpublish-row" hidden><div><strong>Unpublish</strong><small>Take the invitation offline. Guests who open the link will see "coming soon" until you publish again.</small></div><button type="button" class="btn btn-ghost btn-small" id="unpublish-btn">Unpublish</button></div>
+          <div class="danger-row" id="unpublish-row" hidden><div><strong>Unpublish</strong><small>Take the event page offline. Guests who open the link will see "coming soon" until you publish again.</small></div><button type="button" class="btn btn-ghost btn-small" id="unpublish-btn">Unpublish</button></div>
           <div class="danger-row"><div><strong>Delete event</strong><small>Permanently removes the event, its guest list and every reply. This can't be undone.</small></div><button type="button" class="btn btn-danger btn-small" id="delete-event-btn">Delete</button></div>
           <div class="error-msg" id="manage-error"></div>
         </section>
