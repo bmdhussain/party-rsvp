@@ -25,8 +25,14 @@
           <div class="scene-spark spark-one">✦</div><div class="scene-spark spark-two">✳</div>
           <div class="scene-shadow"></div>
           <div class="scene-card">
-            <div class="scene-card-top"><span>Saturday supper</span><span>07:30</span></div>
-            <div class="scene-date">12<br><small>OCT</small></div>
+            <div class="scene-card-top"><span>Saturday supper</span><span>Sat 12 Oct · 07:30</span></div>
+            <!-- Real template artwork, the same files the studio uses, so the
+                 hero shows what the product actually makes. -->
+            <div class="scene-art">
+              <img class="scene-art-img is-active" src="/templates/hero/garden-party.jpg" width="760" height="399" alt="An invitation made with the Garden party template" />
+              <img class="scene-art-img" src="/templates/hero/brunch.jpg" width="760" height="399" alt="" aria-hidden="true" />
+              <img class="scene-art-img" src="/templates/hero/dinner-party.jpg" width="760" height="399" alt="" aria-hidden="true" />
+            </div>
             <h2>Come as you are.</h2>
             <p>A long table, a little music, and the people who make the week worth it.</p>
             <div class="scene-card-bottom"><span>At Maya's place</span><span class="scene-arrow">↗</span></div>
@@ -78,6 +84,19 @@
   </div>
 
   <script>
+    // The hero card cycles through real template artwork. Anyone who prefers
+    // less motion sees the first one and nothing moves.
+    (function () {
+      const slides = [...document.querySelectorAll('.scene-art-img')];
+      if (slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      let i = 0;
+      setInterval(() => {
+        slides[i].classList.remove('is-active');
+        i = (i + 1) % slides.length;
+        slides[i].classList.add('is-active');
+      }, 6000);
+    })();
+
     (async function () {
       const container = document.getElementById('provider-buttons');
       if (!container || document.querySelector('.home-cta.is-signed-in')) return;
