@@ -1317,6 +1317,10 @@ app.get('/api/events/:slug/image', async (req, res) => {
   if (event.template_id) {
     const template = findTemplate(event.template_id);
     if (template) return res.redirect(`/templates/${template.file}`);
+    // The template was retired after this event chose it. The listings still
+    // count the event as having artwork, so answering 404 here would show a
+    // broken image on every card; the site default is the honest stand-in.
+    return res.sendFile(path.join(__dirname, 'public', 'og-default.jpg'));
   }
   res.status(404).end();
 });

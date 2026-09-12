@@ -108,6 +108,18 @@ async function run({ base, reporter }) {
   const thin = cards.filter((c) => c.bytes < (c.original ? 18 : 60) * 1024);
   check('none is placeholder-thin', thin.map((c) => c.id), []);
   check('each sourced piece credits where it came from', cards.filter((c) => !c.credited).map((c) => c.id), []);
+
+  section('An event whose template was retired still shows something');
+  const orphanEv = uuid();
+  const orphanSlug = slug();
+  await pool.query(
+    `INSERT INTO events (id, slug, owner_id, name, event_date, location, template_id, published_at)
+     VALUES ($1,$2,'ux-host','Retired Look', now() + interval '5 days','Hall','a-template-we-deleted', now())`,
+    [orphanEv, orphanSlug]
+  );
+  const orphanImg = await fetch(`${base}/api/events/${orphanSlug}/image`);
+  check('the image endpoint answers rather than 404ing', orphanImg.status, 200);
+  check('and what it answers with is an image', (orphanImg.headers.get('content-type') || '').startsWith('image/'), true);
 }
 
 module.exports = { run };
