@@ -121,6 +121,23 @@ async function run({ base, reporter }) {
     check(`${method} ${p.replace(created.id, ':event').replace(form.id, ':form')} is a 404`, await other.status(method, p, body), 404);
   }
 
+  section('QR codes are drawn by the server');
+  const qr = await anon.raw('GET', `/qr.svg?data=${encodeURIComponent('https://rsvpfor.com/t/abc123')}`);
+  const svg = await qr.text();
+  check('it returns an SVG image', [qr.status, qr.headers.get('content-type')], [200, 'image/svg+xml; charset=utf-8']);
+  check('with an actual pattern in it', svg.startsWith('<svg') && svg.includes('<path d="M'), true);
+  check('and caches hard, since the same text always draws the same code', qr.headers.get('cache-control').includes('immutable'), true);
+  check('no text is echoed back into the image', svg.includes('rsvpfor.com'), false);
+  check('asking for nothing is refused', await anon.status('GET', '/qr.svg'), 400);
+  check('an absurdly long value is refused', await anon.status('GET', `/qr.svg?data=${'x'.repeat(900)}`), 400);
+  const dl = await anon.raw('GET', '/qr.svg?data=hello&download=1&name=my%20form');
+  check('the download link offers a file', dl.headers.get('content-disposition'), 'attachment; filename="my-form.svg"');
+  check('no page still loads the broken QR library', (await anon.text(`/t/${ticketToken}`)).includes('qrcode@1.5.3'), false);
+  check('the ticket page points at the server-drawn code', (await anon.text('/ticket.js')).includes('/qr.svg?data='), true);
+  // The ticket's code holds the whole URL so a guest's own camera opens it;
+  // the door scanner has to take the token off the end.
+  check('the door scanner reads the token out of a scanned URL', (await anon.text('/checkin.js')).includes(String.raw`replace(/^.*\/t\//, '')`), true);
+
   section('Hostile input stays inert');
   const evil = await host.json('POST', '/api/forms', { templateId: 'blank', title: '</title><script>alert(1)</script>' });
   await host.json('POST', `/api/forms/${evil.id}/publish`, { published: true });

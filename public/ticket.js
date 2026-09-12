@@ -20,36 +20,22 @@ function formatCheckedIn(iso) {
   return date.toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-// The QR library comes from a CDN with `defer`, so it may not have run yet when
-// the ticket data lands. Poll briefly rather than racing it, and fall back to
-// showing the code as text if it never arrives — a readable code still gets the
-// guest through the door.
-function renderQr(text) {
-  const canvas = document.getElementById('ticket-qr');
-  const wrap = document.getElementById('ticket-qr-wrap');
-  let waited = 0;
-
-  const attempt = () => {
-    if (typeof QRCode !== 'undefined' && QRCode.toCanvas) {
-      QRCode.toCanvas(canvas, text, { width: 190, margin: 1, color: { dark: '#2f2237', light: '#fffdf9' } }, (err) => {
-        if (err) showFallback();
-      });
-      return;
-    }
-    waited += 100;
-    if (waited > 4000) return showFallback();
-    setTimeout(attempt, 100);
-  };
-
-  const showFallback = () => {
-    canvas.style.display = 'none';
+// The code is drawn by the server, so it always appears — no library to load
+// and nothing to fail quietly. It encodes the ticket's own URL, so a guest
+// scanning with an ordinary camera app opens their ticket, while the door
+// scanner reads the same code and takes the token from the end of it.
+function renderQr(token) {
+  const img = document.getElementById('ticket-qr');
+  const url = `${window.location.origin}/t/${encodeURIComponent(token)}`;
+  img.src = `/qr.svg?data=${encodeURIComponent(url)}`;
+  // If even that fails, the printed code underneath still gets them in.
+  img.onerror = () => {
+    img.style.display = 'none';
     const code = document.createElement('div');
     code.className = 'ticket-qr-fallback';
-    code.textContent = TOKEN;
-    wrap.insertBefore(code, wrap.querySelector('small'));
+    code.textContent = token;
+    document.getElementById('ticket-qr-wrap').insertBefore(code, document.querySelector('#ticket-qr-wrap small'));
   };
-
-  attempt();
 }
 
 const STATUS_COPY = {

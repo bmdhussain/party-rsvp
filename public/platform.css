@@ -132,7 +132,7 @@
   gap: 7px;
 }
 
-.ticket-qr canvas {
+.ticket-qr img {
   border-radius: 12px;
   background: #fffdf9;
 }
@@ -938,4 +938,12 @@ tr.is-arrived td {
   .ticket-guest {
     align-items: center;
   }
+}
+
+/* The poster's QR is an SVG image now; keep it from stretching on paper. */
+.poster-qr img {
+  width: 220px;
+  height: 220px;
+  display: block;
+  margin: 0 auto;
 }

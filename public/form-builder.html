@@ -6,7 +6,6 @@
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
   <link rel="stylesheet" href="/platform.css" />
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
   <!--HEAD-->
   <link rel="stylesheet" href="/forms.css" />
 </head>
@@ -85,7 +84,7 @@
       </section>
       <section class="studio-card qr-card">
         <div class="studio-card-heading compact"><div><span class="section-kicker">In person</span><h2>QR code</h2><p>Print it or put it on a slide — people scan it to open the form.</p></div></div>
-        <div class="qr-row"><canvas id="form-qr" aria-label="QR code for the form link"></canvas><a class="btn btn-ghost btn-small" id="form-qr-download" href="#" download="form-qr.png">Download QR code</a></div>
+        <div class="qr-row"><img id="form-qr" alt="QR code for the form link" width="200" height="200" /><a class="btn btn-ghost btn-small" id="form-qr-download" href="#">Download QR code</a></div>
       </section>
     </section>
 

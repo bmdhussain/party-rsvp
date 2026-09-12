@@ -484,17 +484,9 @@ function renderShare() {
   const text = `${form.title} — please fill this in: ${url}`;
   $('form-whatsapp').href = `https://wa.me/?text=${encodeURIComponent(text)}`;
   $('form-email').href = `mailto:?subject=${encodeURIComponent(form.title)}&body=${encodeURIComponent(text)}`;
-  let waited = 0;
-  (function draw() {
-    if (typeof QRCode !== 'undefined' && QRCode.toCanvas) {
-      QRCode.toCanvas($('form-qr'), url, { width: 200, margin: 1, color: { dark: '#37243d', light: '#ffffff' } }, () => {
-        $('form-qr-download').href = $('form-qr').toDataURL('image/png');
-      });
-      return;
-    }
-    waited += 100;
-    if (waited < 5000) setTimeout(draw, 100);
-  })();
+  // Server-drawn, so the code is there as soon as the tab is.
+  $('form-qr').src = `/qr.svg?data=${encodeURIComponent(url)}`;
+  $('form-qr-download').href = `/qr.svg?data=${encodeURIComponent(url)}&download=1&name=${encodeURIComponent(form.title)}-qr`;
 }
 
 function renderStatus() {

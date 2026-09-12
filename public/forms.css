@@ -946,7 +946,7 @@
   flex-wrap: wrap;
 }
 
-.qr-row canvas {
+.qr-row img {
   border-radius: 12px;
   background: #fff;
   border: 1px solid var(--rf-line, rgba(74, 49, 82, 0.14));

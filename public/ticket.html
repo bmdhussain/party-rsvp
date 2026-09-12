@@ -6,7 +6,6 @@
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/capacity.css" />
   <link rel="stylesheet" href="/platform.css" />
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" defer></script>
   <!--HEAD-->
 </head>
 <body>
@@ -38,7 +37,7 @@
           <div class="ticket-field"><small>Party</small><strong id="ticket-party"></strong></div>
         </div>
         <div class="ticket-qr" id="ticket-qr-wrap">
-          <canvas id="ticket-qr" aria-label="Your check-in code"></canvas>
+          <img id="ticket-qr" alt="QR code for checking in" width="190" height="190" />
           <small>Show this at the door</small>
         </div>
       </div>

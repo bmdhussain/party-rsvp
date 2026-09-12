@@ -90,7 +90,10 @@ async function loadEvent() {
 }
 
 async function submitToken(token, { fromCamera = false } = {}) {
-  const clean = String(token || '').trim();
+  // A ticket's QR holds the whole ticket URL, so that a guest scanning it with
+  // an ordinary camera app lands on their ticket. Here we want the code at the
+  // end of it — and this equally accepts a link someone pasted by hand.
+  const clean = String(token || '').trim().replace(/^.*\/t\//, '');
   if (!clean || state.busy) return;
 
   const now = Date.now();
@@ -238,10 +241,7 @@ document.getElementById('stop-camera').addEventListener('click', stopCamera);
 
 document.getElementById('manual-submit').addEventListener('click', () => {
   const input = document.getElementById('manual-token');
-  // A pasted ticket URL is the likeliest thing to land here, so take the code
-  // off the end of it rather than rejecting it.
-  const value = input.value.trim().replace(/^.*\/t\//, '');
-  submitToken(value);
+  submitToken(input.value);
   input.value = '';
   input.focus();
 });

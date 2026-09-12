@@ -2,17 +2,9 @@
 const EVENT_ID = window.location.pathname.split('/').filter(Boolean)[1];
 
 function drawQr(url) {
-  const canvas = document.getElementById('poster-qr');
-  let waited = 0;
-  // The QR library loads with `defer` from a CDN; wait briefly for it.
-  (function attempt() {
-    if (typeof QRCode !== 'undefined' && QRCode.toCanvas) {
-      QRCode.toCanvas(canvas, url, { width: 320, margin: 1, color: { dark: '#2f2237', light: '#ffffff' } });
-      return;
-    }
-    waited += 100;
-    if (waited < 5000) setTimeout(attempt, 100);
-  })();
+  // Drawn by the server as SVG: it always appears, and stays sharp in print at
+  // any paper size.
+  document.getElementById('poster-qr').src = `/qr.svg?data=${encodeURIComponent(url)}`;
 }
 
 (async function load() {
