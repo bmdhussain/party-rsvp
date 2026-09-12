@@ -97,7 +97,7 @@ async function run({ base, reporter }) {
       credited: Boolean(t.sourceName && t.sourceUrl),
     });
   }
-  check('all 28 are served, preview and preview-card alike', cards.filter((c) => !c.served).map((c) => c.id), []);
+  check(`all ${cards.length} are served, preview and preview-card alike`, cards.filter((c) => !c.served).map((c) => c.id), []);
   check('all are the 1200x630 the layouts expect', cards.filter((c) => c.size[0] !== 1200 || c.size[1] !== 630).map((c) => c.id), []);
   // The placeholder art this library started with compressed to 7-8KB, because
   // there was nothing in it but a gradient and a few flat shapes.
