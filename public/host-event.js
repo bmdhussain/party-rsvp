@@ -976,7 +976,7 @@ function renderTemplateGrid() {
         grid.querySelectorAll('.template-thumb').forEach((item) => item.classList.toggle('selected', item === btn));
         const sourceNote = document.getElementById('template-source-note');
         if (sourceNote && selectedTemplate.sourceUrl) {
-          sourceNote.innerHTML = `Artwork: <a href="${escapeHtml(selectedTemplate.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(selectedTemplate.sourceName || 'FreeSVG.org · Public Domain')}</a>.`;
+          sourceNote.innerHTML = `Artwork: <a href="${escapeHtml(selectedTemplate.sourceUrl)}" target="_blank" rel="noopener">${escapeHtml(selectedTemplate.sourceName || 'Public domain')}</a>.`;
         }
         showEditorPanel(false);
         setEditorBusy(true);

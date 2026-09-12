@@ -4,6 +4,24 @@
 
 const { signIn, client, hiddenAttr, pool, uuid, slug } = require('./helpers');
 
+// Reads the pixel size out of the file itself, so a template that points at
+// artwork of the wrong shape is caught rather than quietly letterboxed.
+function imageSize(buf) {
+  if (buf[0] === 0x89 && buf[1] === 0x50) {
+    return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+  }
+  let i = 2;
+  while (i < buf.length - 9) {
+    if (buf[i] !== 0xff) { i += 1; continue; }
+    const marker = buf[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return [buf.readUInt16BE(i + 7), buf.readUInt16BE(i + 5)];
+    }
+    i += 2 + buf.readUInt16BE(i + 2);
+  }
+  return [0, 0];
+}
+
 async function run({ base, reporter }) {
   const { check, section } = reporter;
   const cookie = await signIn('ux-host', 'Ux Host');
@@ -63,6 +81,28 @@ async function run({ base, reporter }) {
   section('RSVP questions are visible from the event overview');
   check('the overview carries the card', (await host.text(`/host/${evId}`)).includes('overview-questions-card'), true);
   check('and it points at the builder', hostJs.includes('overview-questions-link'), true);
+
+  section('Every template in the picker has real artwork behind it');
+  const { TEMPLATES } = require('../lib/templates');
+  const cards = [];
+  for (const t of TEMPLATES) {
+    const preview = await fetch(`${base}/templates/${t.file}`);
+    const og = await fetch(`${base}/templates/og/${t.file.replace(/\.\w+$/, '.jpg')}`);
+    const buf = Buffer.from(await preview.arrayBuffer());
+    cards.push({
+      id: t.id,
+      served: preview.status === 200 && og.status === 200,
+      size: imageSize(buf),
+      bytes: buf.length,
+      credited: Boolean(t.sourceName && t.sourceUrl),
+    });
+  }
+  check('all 28 are served, preview and preview-card alike', cards.filter((c) => !c.served).map((c) => c.id), []);
+  check('all are the 1200x630 the layouts expect', cards.filter((c) => c.size[0] !== 1200 || c.size[1] !== 630).map((c) => c.id), []);
+  // The placeholder art this library started with compressed to 7-8KB, because
+  // there was nothing in it but a gradient and a few flat shapes.
+  check('none is placeholder-thin', cards.filter((c) => c.bytes < 60 * 1024).map((c) => c.id), []);
+  check('each credits where its artwork came from', cards.filter((c) => !c.credited).map((c) => c.id), []);
 }
 
 module.exports = { run };
