@@ -13,7 +13,7 @@ const { assertLocalDatabase, makeReporter, pool } = require('./helpers');
 
 const PORT = Number(process.env.TEST_PORT || 5199);
 const BASE = `http://127.0.0.1:${PORT}`;
-const SUITES = ['smoke', 'ux'];
+const SUITES = ['smoke', 'ux', 'info'];
 
 assertLocalDatabase();
 

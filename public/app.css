@@ -2987,3 +2987,39 @@ body:has(.ticket-card) .card {
 .occasion-card:hover {
   text-decoration: none;
 }
+
+/* ---------------------------------------------------------------- Info pages
+   Terms, privacy, contact and the site index. Long-form reading, so the
+   measure is narrow and the type a little larger than the app's. */
+.info-page main { max-width: 760px; margin: 0 auto; padding: 0 20px 64px; }
+.info-heading { display: block; margin: 40px 0 8px; }
+.info-heading h1 { margin: 6px 0 10px; }
+.info-heading p { max-width: 62ch; color: var(--muted, #6b6470); font-size: 1.05rem; }
+.info-body { font-size: 1.02rem; line-height: 1.72; }
+.info-body h2 { margin: 36px 0 10px; font-size: 1.24rem; }
+.info-body h3 { margin: 24px 0 6px; font-size: 1.05rem; }
+.info-body p { margin: 0 0 14px; }
+.info-body ul { margin: 0 0 16px; padding-left: 22px; }
+.info-body li { margin: 0 0 7px; }
+.info-body a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.info-body dl { margin: 0 0 18px; }
+.info-body dt { font-weight: 600; margin: 16px 0 2px; }
+.info-body dd { margin: 0 0 6px; }
+.info-note {
+  margin: 24px 0; padding: 14px 16px; border-radius: 12px;
+  background: rgba(0, 0, 0, .035); border: 1px solid rgba(0, 0, 0, .08);
+}
+.info-updated { margin: 34px 0 0; font-size: .9rem; opacity: .65; }
+.info-index { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 0 0 22px; }
+.info-index section { padding: 16px 18px; border: 1px solid rgba(0, 0, 0, .1); border-radius: 14px; }
+.info-index h2 { margin: 0 0 8px; font-size: 1.02rem; }
+.info-index ul { margin: 0; padding-left: 18px; }
+@media (prefers-color-scheme: dark) {
+  .info-note { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .12); }
+  .info-index section { border-color: rgba(255, 255, 255, .14); }
+}
+
+/* The second footer row is the standing site information — quieter than the
+   links people actually navigate with, but always in the same place. */
+.footer-legal { opacity: .78; font-size: .92rem; }
+.footer-fine { margin: 10px 0 0; font-size: .84rem; opacity: .6; }
