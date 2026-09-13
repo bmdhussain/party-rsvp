@@ -1,8 +1,8 @@
 // The town picker, shared by the create form and an event's settings.
 //
 // A town is never set on the host's behalf. The browser's time zone gives a
-// first guess, which is offered as a suggestion to accept or ignore, because
-// the town ends up on a page the host's guests read.
+// first guess, offered as a suggestion to accept or ignore, because the town
+// ends up on a page the host's guests read.
 (function () {
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -21,31 +21,32 @@
 
     let timer = null;
     let chosen = null;
+    // The places behind the visible list. They stay in JavaScript rather than
+    // being written into data- attributes: a place name can contain a quote,
+    // and JSON always does, which ends the attribute early and leaves the
+    // parser with half an object.
+    let offered = [];
+    let suggested = null;
 
-    function show(place) {
+    function show(place, { fillInput = true } = {}) {
       chosen = place;
       if (place) {
+        // The selected town belongs in the box the host typed into. Anything
+        // else reads as though the click did nothing.
+        if (fillInput) input.value = place.label;
         if (label) label.textContent = place.label;
         if (current) current.hidden = false;
         if (suggestion) suggestion.hidden = true;
+      } else {
         input.value = '';
-      } else if (current) {
-        current.hidden = true;
+        if (current) current.hidden = true;
       }
     }
 
-    function render(places) {
-      if (!places.length) {
-        results.innerHTML = '<li><button type="button" disabled>No towns match that.</button></li>';
-      } else {
-        results.innerHTML = places
-          .map(
-            (p) =>
-              `<li><button type="button" data-place="${escapeHtml(JSON.stringify(p))}">${escapeHtml(p.label)}</button></li>`
-          )
-          .join('');
-      }
-      results.hidden = false;
+    function choose(place) {
+      results.hidden = true;
+      show(place);
+      if (onPick) onPick(place);
     }
 
     async function search(q) {
@@ -53,24 +54,34 @@
       if (q.trim().length < 2) return;
       try {
         const places = await (await fetch(`/api/places?q=${encodeURIComponent(q)}`)).json();
-        render(Array.isArray(places) ? places : []);
+        offered = Array.isArray(places) ? places : [];
       } catch {
-        /* a picker that cannot search is still a form that works */
+        return; // a picker that cannot search is still a form that works
       }
+      results.innerHTML = offered.length
+        ? offered
+            .map((p, i) => `<li><button type="button" data-index="${i}">${escapeHtml(p.label)}</button></li>`)
+            .join('')
+        : '<li><button type="button" disabled>No towns match that.</button></li>';
+      results.hidden = false;
     }
 
     input.addEventListener('input', () => {
+      // Typing after choosing means the choice no longer matches what is on
+      // screen, so it stops counting until something is picked again.
+      if (chosen && input.value !== chosen.label) {
+        chosen = null;
+        if (current) current.hidden = true;
+      }
       clearTimeout(timer);
       timer = setTimeout(() => search(input.value), 280);
     });
 
     results.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-place]');
+      const btn = e.target.closest('[data-index]');
       if (!btn) return;
-      results.hidden = true;
-      const place = JSON.parse(btn.dataset.place);
-      show(place);
-      if (onPick) onPick(place);
+      const place = offered[Number(btn.dataset.index)];
+      if (place) choose(place);
     });
 
     if (clearBtn) {
@@ -84,9 +95,10 @@
       if (!root.contains(e.target)) results.hidden = true;
     });
 
+    // A town already saved on the event: named in the box, so it reads the same
+    // as one just chosen.
     if (initial) show(initial);
 
-    // The guess. Offered, never applied: the host taps it or ignores it.
     if (suggestion && !initial) {
       const tz = (() => {
         try {
@@ -100,21 +112,23 @@
           .then((r) => (r.ok ? r.json() : null))
           .then((place) => {
             if (!place || !place.label || chosen) return;
+            suggested = place;
             suggestion.innerHTML =
-              `<button type="button" class="place-suggest-btn" data-place="${escapeHtml(JSON.stringify(place))}">Use ${escapeHtml(place.label)}</button>` +
+              `<button type="button" class="place-suggest-btn">Use ${escapeHtml(place.label)}</button>` +
               '<small>Guessed from your device’s time zone. Change it if the event is somewhere else.</small>';
             suggestion.hidden = false;
-            suggestion.querySelector('[data-place]').addEventListener('click', (e) => {
-              const place2 = JSON.parse(e.currentTarget.dataset.place);
-              show(place2);
-              if (onPick) onPick(place2);
-            });
+            suggestion.querySelector('button').addEventListener('click', () => choose(suggested));
           })
           .catch(() => {});
       }
     }
 
-    return { get value() { return chosen; }, set: show };
+    return {
+      get value() {
+        return chosen;
+      },
+      set: show,
+    };
   }
 
   window.RSVPfor = window.RSVPfor || {};
