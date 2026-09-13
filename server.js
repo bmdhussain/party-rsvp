@@ -6,6 +6,8 @@ const session = require('express-session');
 const pgSessionFactory = require('connect-pg-simple');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
+const siteSettings = require('./lib/site-settings');
+const { registerAdminRoutes } = require('./lib/admin-routes');
 
 const { pool, init } = require('./lib/db');
 const { passport, providers } = require('./lib/auth');
@@ -89,6 +91,19 @@ app.use(
 );
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Theme, doodle and logo are needed by every page's header. The settings module
+// caches them in the process and drops the cache on write, so this costs a
+// query only after a change.
+app.use(async (req, res, next) => {
+  try {
+    req.siteSettings = await siteSettings.getSettings(pool);
+  } catch {
+    req.siteSettings = { ...siteSettings.DEFAULTS };
+  }
+  req.isSiteAdmin = siteSettings.isAdmin(req.user);
+  next();
+});
 
 function requireAuth(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Not logged in.' });
@@ -1615,6 +1630,8 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
 // --- Custom forms ---
 
 registerFormRoutes(app, { pool, requireAuth, verifySameOrigin, baseUrl });
+
+registerAdminRoutes(app, { pool, verifySameOrigin });
 
 // --- Pages ---
 

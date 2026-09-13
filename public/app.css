@@ -3023,3 +3023,53 @@ body:has(.ticket-card) .card {
    links people actually navigate with, but always in the same place. */
 .footer-legal { opacity: .78; font-size: .92rem; }
 .footer-fine { margin: 10px 0 0; font-size: .84rem; opacity: .6; }
+
+/* ------------------------------------------------------------------- Admin
+   The owner's console. Same cards as Settings, plus pickers for the things
+   that change the whole site at once. */
+.admin-tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); }
+.admin-theme-grid, .admin-doodle-grid {
+  display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+}
+.admin-theme, .admin-doodle {
+  position: relative; display: grid; gap: 5px; justify-items: start; text-align: left;
+  padding: 14px; border-radius: 16px; cursor: pointer; font: inherit;
+  border: 1px solid var(--rf-line, rgba(0,0,0,.14)); background: rgba(255, 255, 255, .6);
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.admin-theme:hover, .admin-doodle:hover { transform: translateY(-2px); box-shadow: var(--rf-shadow-sm, 0 6px 16px rgba(0,0,0,.08)); }
+.admin-theme.is-active, .admin-doodle.is-active {
+  border-color: var(--rf-coral, #d66a61); box-shadow: 0 0 0 2px rgba(214, 106, 97, .18);
+}
+.admin-theme-swatch { width: 100%; height: 44px; border-radius: 11px; border: 1px solid rgba(0,0,0,.08); }
+.admin-theme-swatch[data-swatch="default"] { background: linear-gradient(135deg, #f4dfd1 0%, #eee4e7 47%, #dfece6 100%); }
+.admin-theme-name, .admin-doodle-name { font-weight: 700; font-size: .95rem; }
+.admin-theme-note { font-size: .8rem; opacity: .7; line-height: 1.45; }
+.admin-chosen {
+  position: absolute; top: 10px; right: 10px; font-size: .66rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+  background: var(--rf-coral, #d66a61); color: #fff;
+}
+.admin-doodle-art { display: grid; place-items: center; width: 46px; height: 46px; }
+.admin-doodle-none { opacity: .4; font-size: 1.3rem; }
+.admin-logo-row { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.admin-logo-preview {
+  display: grid; place-items: center; min-width: 200px; min-height: 74px; padding: 12px 16px;
+  border-radius: 14px; border: 1px dashed var(--rf-line-strong, rgba(0,0,0,.2));
+  background: rgba(255, 255, 255, .55);
+}
+.admin-logo-preview img { max-height: 52px; max-width: 240px; }
+.admin-logo-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.admin-admins { margin: 0; padding-left: 20px; font-size: .92rem; line-height: 1.7; }
+
+/* The logo as it appears in the chrome, uploaded or not. */
+.brand.has-doodle { display: inline-flex; align-items: center; gap: 7px; }
+.brand-doodle { display: inline-flex; align-items: center; line-height: 0; }
+.brand-image { display: block; max-height: 34px; max-width: 190px; }
+.footer-logo { display: block; max-height: 26px; max-width: 150px; margin-bottom: 4px; }
+@media (max-width: 560px) {
+  .brand-image { max-height: 28px; max-width: 140px; }
+  .brand-doodle svg { width: 22px; height: 22px; }
+}
+.admin-theme-swatch[data-swatch="dusk"] { background: linear-gradient(150deg, #1b1526 0%, #2d2440 52%, #f2c36b 100%); }
+.admin-theme-swatch[data-swatch="garden"] { background: linear-gradient(135deg, #eaf2e0 0%, #7f9b52 60%, #2f5d3f 100%); }

@@ -13,7 +13,7 @@ const { assertLocalDatabase, makeReporter, pool } = require('./helpers');
 
 const PORT = Number(process.env.TEST_PORT || 5199);
 const BASE = `http://127.0.0.1:${PORT}`;
-const SUITES = ['smoke', 'ux', 'info'];
+const SUITES = ['smoke', 'ux', 'info', 'admin'];
 
 assertLocalDatabase();
 
@@ -52,7 +52,10 @@ async function waitForServer(child) {
   const log = [];
   const child = spawn('node', [path.join(__dirname, '..', 'server.js')], {
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'development', SESSION_SECRET: process.env.SESSION_SECRET || 'test-secret',
-      GOOGLE_CLIENT_ID: 'test-client', GOOGLE_CLIENT_SECRET: 'test-secret' },
+      GOOGLE_CLIENT_ID: 'test-client', GOOGLE_CLIENT_SECRET: 'test-secret',
+      // The admin suite signs in as this address and expects to be let in;
+      // every other test user must be kept out by the same setting.
+      ADMIN_EMAILS: 'owner@test.dev' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stdout.on('data', (d) => log.push(String(d)));

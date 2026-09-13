@@ -1,0 +1,175 @@
+/* Alternate site themes.
+ *
+ * The theme is chosen in /admin and written onto <html> as data-theme before
+ * the page is sent, so there is no flash of the default palette.
+ *
+ * Two variable sets are in play: the short names in styles.css (--ink, --plum,
+ * --coral …) and the --rf- names in app.css. A theme has to redefine both, and
+ * then repaint the surfaces whose colours are written as literals rather than
+ * variables — the page background, primary buttons, stat tiles and cards.
+ * That literal list is the part still worth auditing; everything variable-led
+ * follows on its own.
+ */
+
+/* ------------------------------------------------------------------ Dusk
+   Evening events. Deep indigo ground, candle-warm accents, light text. */
+:root[data-theme="dusk"] {
+  --ink: #f2ecf5;
+  --muted: #a99cb4;
+  --paper: #241c2f;
+  --cream: #2d2440;
+  --plum: #e3d5f0;
+  --coral: #f0876f;
+  --sun: #f2c36b;
+  --teal: #5fbfae;
+  --line: rgba(226, 214, 240, 0.16);
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.5);
+
+  --rf-ink: #f2ecf5;
+  --rf-ink-soft: #cfc2da;
+  --rf-muted: #a396ae;
+  --rf-paper: #261e33;
+  --rf-paper-deep: #1e1729;
+  --rf-canvas: #16111f;
+  --rf-plum: #e3d5f0;
+  --rf-plum-deep: #f1e8f8;
+  --rf-coral: #f0876f;
+  --rf-saffron: #f2c36b;
+  --rf-mint: #5fbfae;
+  --rf-line: rgba(226, 214, 240, 0.16);
+  --rf-line-strong: rgba(226, 214, 240, 0.3);
+  --rf-shadow-sm: 0 5px 16px rgba(0, 0, 0, 0.4);
+  --rf-shadow-md: 0 16px 34px rgba(0, 0, 0, 0.46);
+  --rf-shadow-lg: 0 26px 65px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="dusk"] html,
+html[data-theme="dusk"] { background: #16111f; }
+
+html[data-theme="dusk"] body {
+  color: var(--rf-ink);
+  background:
+    radial-gradient(circle at 8% 6%, rgba(242, 195, 107, 0.16), transparent 26rem),
+    radial-gradient(circle at 92% 0%, rgba(240, 135, 111, 0.14), transparent 28rem),
+    linear-gradient(150deg, #1b1526 0%, #191428 48%, #141b26 100%);
+}
+html[data-theme="dusk"] body:before { opacity: 0.05; }
+html[data-theme="dusk"] body:has(.studio-page),
+html[data-theme="dusk"] body:has(.studio-home),
+html[data-theme="dusk"] body:has(.poster-body) {
+  background: linear-gradient(145deg, #1a1524 0%, #15121d 100%);
+}
+
+html[data-theme="dusk"] .card,
+html[data-theme="dusk"] .studio-card,
+html[data-theme="dusk"] .event-card {
+  background: rgba(45, 36, 62, 0.82);
+  border-color: rgba(226, 214, 240, 0.12);
+}
+html[data-theme="dusk"] .btn-primary {
+  background: linear-gradient(110deg, #f0876f, #c76ba8 52%, #8b63c4);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="dusk"] .btn-ghost {
+  background: rgba(226, 214, 240, 0.1);
+  color: var(--rf-ink);
+  box-shadow: none;
+}
+html[data-theme="dusk"] .stat-tile { background: linear-gradient(135deg, #33284a, #2a2340); }
+html[data-theme="dusk"] .hero,
+html[data-theme="dusk"] .tagline { color: #f7f2fb; }
+html[data-theme="dusk"] input[type=text],
+html[data-theme="dusk"] input[type=email],
+html[data-theme="dusk"] input[type=number],
+html[data-theme="dusk"] input[type=password],
+html[data-theme="dusk"] input[type=datetime-local],
+html[data-theme="dusk"] input[type=search],
+html[data-theme="dusk"] select,
+html[data-theme="dusk"] textarea {
+  background: #1f1930;
+  color: var(--rf-ink);
+  border-color: rgba(226, 214, 240, 0.2);
+}
+html[data-theme="dusk"] .badge.yes { background: #1f4a42; color: #93dcc9; }
+html[data-theme="dusk"] .badge.no { background: #332a40; color: var(--rf-muted); }
+html[data-theme="dusk"] .brand { color: #efe6f6; }
+/* The four places --rf-plum-deep is a surface rather than text. Everything
+   else that uses it is a heading, and follows the token. */
+html[data-theme="dusk"] .btn-dark,
+html[data-theme="dusk"] .studio-hero-action,
+html[data-theme="dusk"] .studio-top-actions .btn-primary,
+html[data-theme="dusk"] .workspace-actions .btn-primary { color: #fdf8ff; background: #3a2d57; }
+html[data-theme="dusk"] .brand-mark,
+html[data-theme="dusk"] .studio-page .brand-mark,
+html[data-theme="dusk"] .studio-home .brand-mark { background: #f2c36b; color: #241c2f; }
+html[data-theme="dusk"] .text-link,
+html[data-theme="dusk"] .home-hero p,
+html[data-theme="dusk"] .site-footer { color: #d7cbe2; }
+html[data-theme="dusk"] .admin-logo-preview,
+html[data-theme="dusk"] .admin-theme,
+html[data-theme="dusk"] .admin-doodle { background: rgba(226, 214, 240, 0.07); }
+
+/* ---------------------------------------------------------------- Garden
+   Daytime and outdoors. Paper white, leaf green, a warm clay accent. */
+:root[data-theme="garden"] {
+  --ink: #23301f;
+  --muted: #61705b;
+  --paper: #fbfdf7;
+  --cream: #eef3e6;
+  --plum: #2f5d3f;
+  --coral: #c96f4a;
+  --sun: #e0b345;
+  --teal: #3f8f7d;
+  --line: rgba(47, 93, 63, 0.16);
+  --shadow: 0 20px 55px rgba(35, 60, 40, 0.14);
+
+  --rf-ink: #23301f;
+  --rf-ink-soft: #445040;
+  --rf-muted: #6b7a65;
+  --rf-paper: #fbfdf7;
+  --rf-paper-deep: #eef3e6;
+  --rf-canvas: #e8eee0;
+  --rf-plum: #2f5d3f;
+  --rf-plum-deep: #1f4530;
+  --rf-coral: #c96f4a;
+  --rf-saffron: #e0b345;
+  --rf-mint: #3f8f7d;
+  --rf-line: rgba(47, 93, 63, 0.16);
+  --rf-line-strong: rgba(47, 93, 63, 0.28);
+  --rf-shadow-sm: 0 5px 16px rgba(35, 60, 40, 0.08);
+  --rf-shadow-md: 0 16px 34px rgba(35, 60, 40, 0.12);
+  --rf-shadow-lg: 0 26px 65px rgba(35, 60, 40, 0.16);
+}
+
+html[data-theme="garden"] { background: #e8eee0; }
+html[data-theme="garden"] body {
+  color: var(--rf-ink);
+  background:
+    radial-gradient(circle at 6% 8%, rgba(224, 179, 69, 0.24), transparent 26rem),
+    radial-gradient(circle at 94% 2%, rgba(63, 143, 125, 0.18), transparent 28rem),
+    linear-gradient(135deg, #eaf2e0 0%, #f2f6ea 46%, #dfeee6 100%);
+}
+html[data-theme="garden"] body:has(.studio-page),
+html[data-theme="garden"] body:has(.studio-home),
+html[data-theme="garden"] body:has(.poster-body) {
+  background: linear-gradient(145deg, #f2f4ec 0%, #e9eee3 100%);
+}
+html[data-theme="garden"] .btn-primary {
+  background: linear-gradient(110deg, #c96f4a, #7f9b52 55%, #2f5d3f);
+  box-shadow: 0 10px 22px rgba(47, 93, 63, 0.24);
+}
+html[data-theme="garden"] .stat-tile { background: linear-gradient(135deg, #e3efd8, #dfeadf); }
+html[data-theme="garden"] .brand-mark { background: #2f5d3f; color: #ffe9a8; }
+html[data-theme="garden"] .card,
+html[data-theme="garden"] .studio-card { background: rgba(251, 253, 247, 0.94); }
+
+/* The mock invitation in the hero is a cream card whatever the theme is, so it
+   keeps its own dark text rather than following the page's. */
+html[data-theme="dusk"] .scene-card,
+html[data-theme="dusk"] .scene-card h2,
+html[data-theme="dusk"] .scene-card p,
+html[data-theme="dusk"] .scene-card small,
+html[data-theme="dusk"] .hero-scene .scene-card * { color: #3a2f42; }
+html[data-theme="dusk"] .account-avatar.account-initials { background: #4a3b68; color: #f2e8fa; }
