@@ -9,6 +9,17 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
+// If the console decides the sign-in is too old to trust, it answers with where
+// to go and prove it again. Follow that rather than showing an error the reader
+// can do nothing with.
+function reauthIfAsked(data, res) {
+  if (res.status === 401 && data && data.reauth) {
+    window.location.href = data.reauth;
+    return true;
+  }
+  return false;
+}
+
 let state = { settings: {}, themes: [], doodles: [], admins: [] };
 
 const TILES = [
@@ -88,11 +99,12 @@ function renderAdmins() {
 
 async function load() {
   const res = await fetch('/api/admin/settings');
+  const data = await res.json().catch(() => ({}));
+  if (reauthIfAsked(data, res)) return;
   if (!res.ok) {
     document.getElementById('theme-grid').innerHTML = '<div class="empty-note">Couldn\'t load settings.</div>';
     return;
   }
-  const data = await res.json();
   state = { settings: data.settings, themes: data.themes, doodles: data.doodles, admins: data.admins };
   renderThemes();
   renderDoodles();
@@ -107,6 +119,7 @@ async function save(patch, message) {
     body: JSON.stringify(patch),
   });
   const data = await res.json().catch(() => ({}));
+  if (reauthIfAsked(data, res)) return;
   if (!res.ok) {
     toast(data.error || 'That did not save.', { kind: 'error' });
     return;

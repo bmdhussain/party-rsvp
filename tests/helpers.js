@@ -56,7 +56,7 @@ function makeReporter(name) {
 }
 
 // A signed-in browser session, the way a real Google login leaves one.
-async function signIn(userId, name = 'Test Host') {
+async function signIn(userId, name = 'Test Host', { authAgeMs = 0 } = {}) {
   await pool.query(`CREATE TABLE IF NOT EXISTS "session" ("sid" varchar NOT NULL PRIMARY KEY, "sess" json NOT NULL, "expire" timestamp(6) NOT NULL)`);
   await pool.query(
     `INSERT INTO users (id, provider, name, email) VALUES ($1,'test',$2,$3)
@@ -68,6 +68,9 @@ async function signIn(userId, name = 'Test Host') {
     sid,
     JSON.stringify({
       cookie: { originalMaxAge: 86400000, expires: new Date(Date.now() + 86400000), httpOnly: true, path: '/' },
+      // When the provider last checked who this is. The admin console refuses a
+      // session whose answer is old, so tests can make either kind.
+      authTime: Date.now() - authAgeMs,
       passport: { user: userId },
     }),
   ]);

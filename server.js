@@ -271,6 +271,10 @@ function rememberNext(req, res, next) {
 function finishLogin(req, res) {
   const target = safeNext(req.session.returnTo) || '/dashboard';
   delete req.session.returnTo;
+  // When the identity provider last actually checked who this is. A session can
+  // outlive that by thirty days, which is fine for hosting an event and not
+  // fine for the owner's console.
+  req.session.authTime = Date.now();
   res.redirect(target);
 }
 
@@ -278,7 +282,17 @@ function finishLogin(req, res) {
 // does at login (its defence against session fixation), which would
 // otherwise wipe it.
 if (providers.google) {
-  app.get('/auth/google', rememberNext, passport.authenticate('google', { scope: ['profile', 'email'] }));
+  // prompt=select_account stops Google signing someone straight in on whichever
+  // account the browser happens to be holding — which on a shared machine is
+  // the last person who used it, and on a personal one may not be the account
+  // you meant. reauth=1 asks for the password again even when that session is
+  // live and valid; the admin console uses it.
+  app.get('/auth/google', rememberNext, (req, res, next) =>
+    passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      prompt: req.query.reauth ? 'login' : 'select_account',
+    })(req, res, next)
+  );
   app.get(
     '/auth/google/callback',
     passport.authenticate('google', { failureRedirect: '/login?failed=1', keepSessionInfo: true }),
@@ -287,7 +301,12 @@ if (providers.google) {
 }
 
 if (providers.facebook) {
-  app.get('/auth/facebook', rememberNext, passport.authenticate('facebook', { scope: ['email'] }));
+  app.get('/auth/facebook', rememberNext, (req, res, next) =>
+    passport.authenticate('facebook', {
+      scope: ['email'],
+      authType: req.query.reauth ? 'reauthenticate' : undefined,
+    })(req, res, next)
+  );
   app.get(
     '/auth/facebook/callback',
     passport.authenticate('facebook', { failureRedirect: '/login?failed=1', keepSessionInfo: true }),

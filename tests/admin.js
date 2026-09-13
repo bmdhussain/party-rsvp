@@ -56,6 +56,22 @@ async function run({ base, reporter }) {
 
   section('The logo endpoint is honest when there is no logo');
   check('it 404s rather than serving an empty body', (await fetch(`${base}/site/logo`)).status, 404);
+
+  section('Being signed in is not enough to open the console');
+  // Google signs someone straight back in if the browser is holding a live
+  // session, so a thirty-day cookie would otherwise be the only thing between a
+  // borrowed laptop and the whole site.
+  const staleCookie = await signIn('admin-owner-stale', 'Site Owner', { authAgeMs: 60 * 60 * 1000 });
+  await pool.query(`UPDATE users SET email = 'owner@test.dev' WHERE id = 'admin-owner-stale'`);
+  const stale = client(base, staleCookie);
+  const stalePage = await fetch(`${base}/admin`, { headers: { cookie: staleCookie }, redirect: 'manual' });
+  check('an hour-old sign-in is sent back to the provider', stalePage.status, 302);
+  check('and told to prove it again rather than just re-entering', (stalePage.headers.get('location') || '').includes('reauth=1'), true);
+  check('the settings API refuses it too', await stale.status('GET', '/api/admin/settings'), 401);
+  check('so does a write', await stale.status('PUT', '/api/admin/settings', { theme: 'dusk' }), 401);
+  const refusal = await stale.json('GET', '/api/admin/settings');
+  check('and it says where to go', refusal.reauth.includes('/auth/google?reauth=1'), true);
+  check('a fresh sign-in still gets in', await owner.status('GET', '/api/admin/settings'), 200);
 }
 
 module.exports = { run };
