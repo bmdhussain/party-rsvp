@@ -1,3 +1,39 @@
+
+// A weather line, but only where it is honest. Inside the forecast window it is
+// a forecast for that day; beyond it, it is what that week is usually like,
+// said in those words. Open-Meteo's licence asks for the credit, so it is here
+// rather than buried in a footer.
+const WEATHER_ICONS = {
+  sun: '\u2600\uFE0F', 'cloud-sun': '\u26C5', cloud: '\u2601\uFE0F', fog: '\uD83C\uDF2B\uFE0F',
+  drizzle: '\uD83C\uDF26\uFE0F', rain: '\uD83C\uDF27\uFE0F', sleet: '\uD83C\uDF28\uFE0F',
+  snow: '\u2744\uFE0F', storm: '\u26C8\uFE0F',
+};
+
+function renderWeather(w, place) {
+  const box = document.getElementById('event-weather');
+  if (!box || !w) return;
+  const icon = WEATHER_ICONS[w.icon] || WEATHER_ICONS.cloud;
+  const where = place ? ` in ${place}` : '';
+  let main;
+  let note = '';
+  if (w.kind === 'forecast') {
+    const rain = w.precipitationChance == null ? '' : ` \u00b7 ${w.precipitationChance}% chance of rain`;
+    main = `${icon} ${w.label}, ${w.maxTemp}\u00b0 / ${w.minTemp}\u00b0${rain}`;
+    note = w.advice || '';
+  } else {
+    main = `${icon} Usually around ${w.maxTemp}\u00b0 / ${w.minTemp}\u00b0${where} at this time of year`;
+    note =
+      w.wetDayChance == null
+        ? 'Too far ahead for a forecast — this is the average of recent years.'
+        : `Rain on about ${w.wetDayChance}% of days. Too far ahead for a forecast — this is the average of recent years.`;
+  }
+  box.innerHTML =
+    `<span class="event-weather-main">${main}</span>` +
+    (note ? `<span class="event-weather-note">${note}</span>` : '') +
+    '<a class="event-weather-credit" href="https://open-meteo.com/" target="_blank" rel="noopener">Weather by Open-Meteo</a>';
+  box.hidden = false;
+}
+
 const SLUG = window.location.pathname.split('/').filter(Boolean).pop();
 
 function formatEventDate(iso) {
@@ -113,6 +149,7 @@ async function loadEvent() {
         document.getElementById('event-desc').textContent = event.description || '';
         document.getElementById('event-date').textContent = dateText;
         if (event.location) document.getElementById('event-location').textContent = event.location;
+        renderWeather(event.weather, event.place);
       };
       bannerImg.alt = `Invitation artwork for ${event.name}`;
       bannerImg.onerror = showPlainHero;

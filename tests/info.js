@@ -51,6 +51,12 @@ async function run({ base, reporter }) {
   }
   check('no third-party tracker is served on any public page', found, []);
 
+  // "That's the list." Every outside service the code actually calls has to be
+  // named on the page, or the page is wrong.
+  const privacyHtml = await anon.text('/privacy');
+  const NAMED = ['Google', 'Brevo', 'Open-Meteo'];
+  check('every third party the code calls is named', NAMED.filter((n) => !privacyHtml.includes(n)), []);
+
   // "One cookie ... can't be read by JavaScript, is only sent to this site, is
   // sent over HTTPS in production, and expires after 30 days." The helper
   // fabricates a session row rather than going through Google, so there is no

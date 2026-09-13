@@ -13,7 +13,7 @@ const { assertLocalDatabase, makeReporter, pool } = require('./helpers');
 
 const PORT = Number(process.env.TEST_PORT || 5199);
 const BASE = `http://127.0.0.1:${PORT}`;
-const SUITES = ['smoke', 'ux', 'info', 'admin'];
+const SUITES = ['smoke', 'ux', 'info', 'admin', 'weather'];
 
 assertLocalDatabase();
 
@@ -55,7 +55,24 @@ async function waitForServer(child) {
       GOOGLE_CLIENT_ID: 'test-client', GOOGLE_CLIENT_SECRET: 'test-secret',
       // The admin suite signs in as this address and expects to be let in;
       // every other test user must be kept out by the same setting.
-      ADMIN_EMAILS: 'owner@test.dev' },
+      ADMIN_EMAILS: 'owner@test.dev',
+      // The weather suite asserts what reaches the event page, so the server it
+      // talks to answers from a fixture rather than the live service.
+      WEATHER_FIXTURE: JSON.stringify({
+        forecast: {
+          daily: {
+            time: ['2026-01-01'], weather_code: [61], temperature_2m_max: [17],
+            temperature_2m_min: [9], precipitation_probability_max: [80],
+          },
+        },
+        archive: {
+          daily: {
+            time: ['2026-01-01'], temperature_2m_max: [24],
+            temperature_2m_min: [14], precipitation_sum: [0],
+          },
+        },
+        geocode: { results: [{ name: 'London', admin1: 'England', country: 'United Kingdom', latitude: 51.5072, longitude: -0.1276, timezone: 'Europe/London' }] },
+      }) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   child.stdout.on('data', (d) => log.push(String(d)));

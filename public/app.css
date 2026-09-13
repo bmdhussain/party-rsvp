@@ -3073,3 +3073,26 @@ body:has(.ticket-card) .card {
 }
 .admin-theme-swatch[data-swatch="dusk"] { background: linear-gradient(150deg, #1b1526 0%, #2d2440 52%, #f2c36b 100%); }
 .admin-theme-swatch[data-swatch="garden"] { background: linear-gradient(135deg, #eaf2e0 0%, #7f9b52 60%, #2f5d3f 100%); }
+
+/* ----------------------------------------------------------------- Weather
+   Sits under the location on an event page. Deliberately quiet: it is context
+   for a decision about a coat, not a headline. */
+.event-weather { display: grid; gap: 3px; margin: 10px 0 4px; font-size: .93rem; }
+.event-weather-main { font-weight: 600; }
+.event-weather-note { font-size: .84rem; opacity: .75; line-height: 1.5; }
+.event-weather-credit { font-size: .72rem; opacity: .5; text-decoration: none; justify-self: start; }
+.event-weather-credit:hover { opacity: .8; text-decoration: underline; }
+.place-picker { position: relative; }
+.place-results {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px);
+  margin: 0; padding: 4px; list-style: none; border-radius: 12px;
+  background: var(--rf-paper, #fff); border: 1px solid var(--rf-line, rgba(0,0,0,.14));
+  box-shadow: var(--rf-shadow-md, 0 12px 28px rgba(0,0,0,.14)); max-height: 260px; overflow: auto;
+}
+.place-results li { margin: 0; }
+.place-results button {
+  display: block; width: 100%; text-align: left; padding: 9px 11px; border: 0;
+  border-radius: 9px; background: none; font: inherit; cursor: pointer;
+}
+.place-results button:hover, .place-results button:focus { background: rgba(0, 0, 0, .06); }
+.place-current { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }

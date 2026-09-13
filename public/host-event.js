@@ -1589,3 +1589,97 @@ showTab(document.querySelector('[data-initial-tab]')?.dataset.initialTab || tabF
 loadDashboard();
 loadTemplates();
 loadFaqs();
+
+// --- Weather: attaching a town to the event -------------------------------
+// The free-text location is for guests ("at Maya's place") and no geocoder can
+// resolve it, so the forecast needs a town chosen deliberately. Nothing is
+// saved until the host picks one from the list.
+(function placePicker() {
+  const input = document.getElementById('place-search');
+  if (!input) return;
+  const results = document.getElementById('place-results');
+  const current = document.getElementById('place-current');
+  const label = document.getElementById('place-current-label');
+  const error = document.getElementById('place-error');
+  let timer = null;
+
+  function showCurrent(place) {
+    if (place) {
+      label.textContent = place;
+      current.hidden = false;
+      input.value = '';
+    } else {
+      current.hidden = true;
+    }
+  }
+
+  async function search(q) {
+    results.hidden = true;
+    if (q.trim().length < 2) return;
+    let places = [];
+    try {
+      places = await (await fetch(`/api/places?q=${encodeURIComponent(q)}`)).json();
+    } catch {
+      return;
+    }
+    if (!Array.isArray(places) || !places.length) {
+      results.innerHTML = '<li><button type="button" disabled>No towns match that.</button></li>';
+      results.hidden = false;
+      return;
+    }
+    results.innerHTML = places
+      .map(
+        (p) =>
+          `<li><button type="button" data-place='${JSON.stringify(p).replace(/'/g, '&#39;')}'>${escapeHtml(p.label)}</button></li>`
+      )
+      .join('');
+    results.hidden = false;
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => search(input.value), 280);
+  });
+
+  results.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-place]');
+    if (!btn) return;
+    const place = JSON.parse(btn.dataset.place);
+    error.style.display = 'none';
+    results.hidden = true;
+    const res = await fetch(`/api/events/${EVENT_ID}/place`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(place),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      error.textContent = data.error || 'That did not save.';
+      error.style.display = 'block';
+      return;
+    }
+    showCurrent(data.place);
+    window.RSVPfor?.toast('Weather will show on your event page.', { kind: 'success' });
+  });
+
+  document.getElementById('place-clear').addEventListener('click', async () => {
+    const res = await fetch(`/api/events/${EVENT_ID}/place`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: null }),
+    });
+    if (!res.ok) return;
+    showCurrent(null);
+    window.RSVPfor?.toast('Weather removed from your event page.', { kind: 'info' });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.place-picker')) results.hidden = true;
+  });
+
+  // Whatever town is already set.
+  fetch(`/api/events/${EVENT_ID}/host`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => data && showCurrent((data.event || data).place_label || null))
+    .catch(() => {});
+})();

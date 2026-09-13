@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const siteSettings = require('./lib/site-settings');
 const { registerAdminRoutes } = require('./lib/admin-routes');
+const weather = require('./lib/weather');
 
 const { pool, init } = require('./lib/db');
 const { passport, providers } = require('./lib/auth');
@@ -742,7 +743,7 @@ app.delete('/api/events/:eventId', requireAuth, verifySameOrigin, async (req, re
 app.get('/api/events/:eventId/host', requireAuth, async (req, res) => {
   const { rows: eventRows } = await pool.query(
     `SELECT id, slug, owner_id, name, event_date, location, description, created_at, invite_mode,
-            capacity, visibility, category, published_at,
+            capacity, visibility, category, published_at, place_label,
             (image_data IS NOT NULL OR template_id IS NOT NULL) AS has_image,
             (SELECT count(*)::int FROM event_faqs f WHERE f.event_id = events.id) AS faq_count
      FROM events WHERE id = $1 AND owner_id = $2`,
@@ -1265,6 +1266,7 @@ app.get('/api/events/:slug/public', async (req, res) => {
   const { rows } = await pool.query(
     `SELECT e.id, e.slug, e.owner_id, e.name, e.event_date, e.location, e.description, e.invite_mode,
             e.capacity, e.published_at, e.visibility,
+            e.latitude, e.longitude, e.place_label, e.place_timezone,
             (e.image_data IS NOT NULL OR e.template_id IS NOT NULL) AS has_image,
             u.name AS host_name, u.handle AS host_handle, u.public_profile AS host_public
      FROM events e JOIN users u ON u.id = e.owner_id
@@ -1275,8 +1277,15 @@ app.get('/api/events/:slug/public', async (req, res) => {
   if (!canView(rows[0], req)) return res.status(404).json(NOT_PUBLISHED);
   const {
     id, owner_id, has_image, invite_mode, capacity, published_at, visibility,
+    latitude, longitude, place_label, place_timezone,
     host_name, host_handle, host_public, ...event
   } = rows[0];
+
+  // Never lets the page fail: weatherFor swallows its own errors and a missing
+  // forecast simply means no weather line.
+  const forecast = await weather.weatherFor({
+    latitude, longitude, event_date: event.event_date, timezone: place_timezone,
+  });
 
   const taken = await confirmedHeadcount(pool, id);
   const { rows: faqs } = await pool.query(
@@ -1288,6 +1297,8 @@ app.get('/api/events/:slug/public', async (req, res) => {
 
   res.json({
     ...event,
+    place: place_label || null,
+    weather: forecast,
     inviteOnly: invite_mode === 'restricted',
     imageUrl: makeImageUrl(req, req.params.slug, has_image),
     shareUrl: makeShareUrl(req, req.params.slug),
@@ -1649,6 +1660,33 @@ app.post('/api/events/:slug/rsvp', rsvpLimiter, async (req, res) => {
 // --- Custom forms ---
 
 registerFormRoutes(app, { pool, requireAuth, verifySameOrigin, baseUrl });
+
+// Town-or-city lookup for the host's own picker. Behind auth because it is a
+// convenience for hosts, not a search endpoint for the public.
+app.get('/api/places', requireAuth, async (req, res) => {
+  res.json(await weather.searchPlaces(req.query.q));
+});
+
+app.put('/api/events/:eventId/place', requireAuth, verifySameOrigin, async (req, res) => {
+  const { label, latitude, longitude, timezone } = req.body || {};
+  const clearing = label === null || label === '';
+  if (!clearing) {
+    const lat = Number(latitude);
+    const lon = Number(longitude);
+    if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) {
+      return res.status(400).json({ error: 'That place did not come with usable coordinates.' });
+    }
+  }
+  const { rowCount } = await pool.query(
+    `UPDATE events SET place_label = $1, latitude = $2, longitude = $3, place_timezone = $4
+     WHERE id = $5 AND owner_id = $6`,
+    clearing ? [null, null, null, null, req.params.eventId, req.user.id]
+             : [String(label).slice(0, 160), Number(latitude), Number(longitude),
+                timezone ? String(timezone).slice(0, 64) : null, req.params.eventId, req.user.id]
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Event not found.' });
+  res.json({ place: clearing ? null : String(label).slice(0, 160) });
+});
 
 registerAdminRoutes(app, { pool, verifySameOrigin });
 
