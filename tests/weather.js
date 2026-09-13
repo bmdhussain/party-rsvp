@@ -132,6 +132,25 @@ async function run({ base, reporter }) {
   check('a junk zone suggests nothing', await host.json('GET', '/api/places/suggest?tz=UTC'), null);
   check('suggestions need a signed-in host', await anon.status('GET', '/api/places/suggest?tz=Europe%2FLondon'), 401);
 
+  section('Coordinates can be turned back into a town, on request');
+  weather.clearCache();
+  weather.setFetcher(async (url) => {
+    if (!url.includes('bigdatacloud')) return {};
+    return { city: 'Mumbai', locality: 'Mumbai', principalSubdivision: 'Maharashtra', countryName: 'India' };
+  });
+  const found = await weather.reverseGeocode(19.076, 72.877);
+  check('it names the place', found.label, 'Mumbai, Maharashtra, India');
+  check('and keeps the precise coordinates, not the town centre', [found.latitude, found.longitude], [19.076, 72.877]);
+  check('impossible coordinates are refused before any lookup', await weather.reverseGeocode(999, 0), null);
+  check('so are ones that are not numbers', await weather.reverseGeocode('here', 'there'), null);
+  weather.setFetcher(async () => { throw new Error('down'); });
+  check('an upstream failure returns nothing rather than throwing', await weather.reverseGeocode(19, 72), null);
+  check('the lookup needs a signed-in host', await anon.status('GET', '/api/places/reverse?lat=19&lon=72'), 401);
+  check('both forms offer the precise option', [
+    (await host.text('/events/new')).includes('data-place-locate'),
+    (await host.text(`/host/${evId}/settings`)).includes('data-place-locate'),
+  ], [true, true]);
+
   section('A town can be set as the event is created');
   const born = await host.json('POST', '/api/events', {
     name: 'Rooftop Drinks',

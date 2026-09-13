@@ -54,7 +54,7 @@ async function run({ base, reporter }) {
   // "That's the list." Every outside service the code actually calls has to be
   // named on the page, or the page is wrong.
   const privacyHtml = await anon.text('/privacy');
-  const NAMED = ['Google', 'Brevo', 'Open-Meteo'];
+  const NAMED = ['Google', 'Brevo', 'Open-Meteo', 'BigDataCloud'];
   check('every third party the code calls is named', NAMED.filter((n) => !privacyHtml.includes(n)), []);
 
   // "One cookie ... can't be read by JavaScript, is only sent to this site, is

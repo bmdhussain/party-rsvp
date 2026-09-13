@@ -3115,3 +3115,10 @@ body:has(.ticket-card) .card {
   background: var(--rf-paper, #fffdf9);
   color: inherit;
 }
+.place-locate-btn {
+  margin-top: 8px; font: 600 13px inherit; padding: 7px 12px; border-radius: 999px;
+  cursor: pointer; border: 1px solid var(--rf-line-strong, rgba(0, 0, 0, .22));
+  background: none; color: inherit;
+}
+.place-locate-btn:hover:not(:disabled) { background: rgba(0, 0, 0, .05); }
+.place-locate-btn:disabled { opacity: .55; cursor: default; }

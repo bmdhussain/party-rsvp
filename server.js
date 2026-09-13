@@ -1686,6 +1686,12 @@ app.get('/api/places/suggest', requireAuth, async (req, res) => {
   res.json(await weather.suggestPlace(req.query.tz));
 });
 
+// Coordinates the host's own browser handed over, after they agreed to the
+// prompt, turned back into a place name they can recognise.
+app.get('/api/places/reverse', requireAuth, async (req, res) => {
+  res.json(await weather.reverseGeocode(req.query.lat, req.query.lon));
+});
+
 app.put('/api/events/:eventId/place', requireAuth, verifySameOrigin, async (req, res) => {
   const { label, latitude, longitude, timezone } = req.body || {};
   const clearing = label === null || label === '';

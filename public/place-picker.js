@@ -34,7 +34,9 @@
         // The selected town belongs in the box the host typed into. Anything
         // else reads as though the click did nothing.
         if (fillInput) input.value = place.label;
-        if (label) label.textContent = place.label;
+        // The name is already in the box above; repeating it here just doubles
+        // it up, so this line says what having it means instead.
+        if (label) label.textContent = 'Weather will show on the event page.';
         if (current) current.hidden = false;
         if (suggestion) suggestion.hidden = true;
       } else {
@@ -98,6 +100,45 @@
     // A town already saved on the event: named in the box, so it reads the same
     // as one just chosen.
     if (initial) show(initial);
+
+    // The precise option. A time zone is a country-sized hint — everyone in
+    // India reports Asia/Kolkata — so a host who wants the actual town taps
+    // once and the browser asks their permission. Nothing happens without that
+    // tap, and nothing is looked up from their network address.
+    const locateBtn = root.querySelector('[data-place-locate]');
+    if (locateBtn) {
+      if (!navigator.geolocation) {
+        locateBtn.hidden = true;
+      } else {
+        locateBtn.addEventListener('click', () => {
+          const original = locateBtn.textContent;
+          locateBtn.disabled = true;
+          locateBtn.textContent = 'Finding you…';
+          const done = (msg) => {
+            locateBtn.disabled = false;
+            locateBtn.textContent = original;
+            if (msg) window.RSVPfor?.toast(msg, { kind: 'info' });
+          };
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              try {
+                const { latitude, longitude } = pos.coords;
+                const place = await (
+                  await fetch(`/api/places/reverse?lat=${latitude}&lon=${longitude}`)
+                ).json();
+                if (!place || !place.label) return done('Could not name that spot — try typing the town.');
+                done();
+                choose(place);
+              } catch {
+                done('Could not look that up — try typing the town.');
+              }
+            },
+            () => done('No location shared. You can still type the town.'),
+            { enableHighAccuracy: false, timeout: 9000, maximumAge: 10 * 60 * 1000 }
+          );
+        });
+      }
+    }
 
     if (suggestion && !initial) {
       const tz = (() => {
