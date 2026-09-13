@@ -1,3 +1,9 @@
+// The town picker is optional and mounted before anything is submitted, so a
+// host who ignores it simply creates an event without weather.
+const placePicker = window.RSVPfor && window.RSVPfor.mountPlacePicker
+  ? window.RSVPfor.mountPlacePicker(document.getElementById('create-place'))
+  : null;
+
 // Step 1 of setting up an event. Submitting creates the draft straight away, so
 // from here on the host can leave at any point and pick it up again from the
 // dashboard — every later step saves as it goes.
@@ -75,6 +81,7 @@ document.getElementById('create-form').addEventListener('submit', async (e) => {
         name,
         date,
         location: document.getElementById('location').value,
+        place: placePicker ? placePicker.value : null,
         description: document.getElementById('description').value,
         category: document.getElementById('category').value,
       }),

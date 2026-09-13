@@ -3096,3 +3096,22 @@ body:has(.ticket-card) .card {
 }
 .place-results button:hover, .place-results button:focus { background: rgba(0, 0, 0, .06); }
 .place-current { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: .9rem; }
+.place-suggest { margin-top: 8px; display: grid; gap: 4px; justify-items: start; }
+.place-suggest small { font-size: .78rem; opacity: .65; line-height: 1.45; }
+.place-suggest-btn {
+  font: 600 13px inherit; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px dashed var(--rf-line-strong, rgba(0,0,0,.24));
+  background: rgba(255, 255, 255, .6); color: inherit;
+}
+.place-suggest-btn:hover { border-style: solid; }
+/* type=search is not in styles.css's field selector, so the town box would
+   otherwise render at the browser's default width next to full-width fields. */
+.place-picker [data-place-input] {
+  width: 100%;
+  font: 15px 'DM Sans', sans-serif;
+  padding: 12px 14px;
+  border-radius: 13px;
+  border: 1px solid var(--rf-line, rgba(0, 0, 0, .14));
+  background: var(--rf-paper, #fffdf9);
+  color: inherit;
+}

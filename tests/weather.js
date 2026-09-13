@@ -95,6 +95,61 @@ async function run({ base, reporter }) {
   check('and the host can take it off again', cleared.place, null);
   check('the weather goes with it', (await anon.json('GET', `/api/events/${evSlug}/public`)).weather, null);
 
+  section('A town can be guessed from the browser, never from the visitor\u2019s address');
+  check('a real zone yields its city', weather.townFromTimezone('Asia/Kolkata'), 'Kolkata');
+  check('underscores become spaces', weather.townFromTimezone('America/New_York'), 'New York');
+  check('a three-part zone still finds the city', weather.townFromTimezone('America/Argentina/Buenos_Aires'), 'Buenos Aires');
+  check('an offset is not a place', weather.townFromTimezone('Etc/GMT+5'), null);
+  check('neither is UTC', weather.townFromTimezone('UTC'), null);
+  check('nor a country-shaped zone', weather.townFromTimezone('Japan'), null);
+  check('nor nothing at all', weather.townFromTimezone(''), null);
+
+  check('a retired zone name is translated', weather.canonicalZone('Asia/Calcutta'), 'Asia/Kolkata');
+  check('and then yields the right city', weather.townFromTimezone('Asia/Calcutta'), 'Kolkata');
+  check('Kiev becomes Kyiv', weather.townFromTimezone('Europe/Kiev'), 'Kyiv');
+
+  // A name is not a place: there is a Calcutta in South Africa and a London in
+  // Ohio. A suggestion only counts if the candidate's own zone is the one the
+  // browser reported, and nothing is suggested otherwise.
+  weather.clearCache();
+  weather.setFetcher(async (url) => {
+    if (!url.includes('geocoding-api')) return {};
+    return {
+      results: [
+        { name: 'Calcutta', admin1: 'Mpumalanga', country: 'South Africa', latitude: -25.9, longitude: 31.1, timezone: 'Africa/Johannesburg', population: 35864 },
+        { name: 'Kolkata', admin1: 'West Bengal', country: 'India', latitude: 22.57, longitude: 88.36, timezone: 'Asia/Kolkata', population: 4631392 },
+      ],
+    };
+  });
+  const india = await weather.suggestPlace('Asia/Calcutta');
+  check('the wrong-continent namesake is not suggested', india.label.includes('India'), true);
+  const nothing = await weather.suggestPlace('Pacific/Auckland');
+  check('and when nothing is in the right zone, nothing is suggested', nothing, null);
+  check('search puts the biggest place first', (await weather.searchPlaces('calcutta'))[0].label.includes('Kolkata'), true);
+
+  const suggested = await host.json('GET', '/api/places/suggest?tz=Europe%2FLondon');
+  check('the suggestion is a real place with coordinates', typeof suggested.latitude, 'number');
+  check('a junk zone suggests nothing', await host.json('GET', '/api/places/suggest?tz=UTC'), null);
+  check('suggestions need a signed-in host', await anon.status('GET', '/api/places/suggest?tz=Europe%2FLondon'), 401);
+
+  section('A town can be set as the event is created');
+  const born = await host.json('POST', '/api/events', {
+    name: 'Rooftop Drinks',
+    date: daysFromNow(5).toISOString().slice(0, 16),
+    place: { label: 'Lisbon, Portugal', latitude: 38.72, longitude: -9.13, timezone: 'Europe/Lisbon' },
+  });
+  const bornView = await host.json('GET', `/api/events/${born.id}/host`);
+  check('the new event already has its town', (bornView.event || bornView).place_label, 'Lisbon, Portugal');
+  const noPlace = await host.json('POST', '/api/events', { name: 'No Town', date: daysFromNow(5).toISOString().slice(0, 16) });
+  const noPlaceView = await host.json('GET', `/api/events/${noPlace.id}/host`);
+  check('and skipping it is fine', (noPlaceView.event || noPlaceView).place_label, null);
+  const junk = await host.json('POST', '/api/events', {
+    name: 'Bad Coords', place: { label: 'Nowhere', latitude: 'abc', longitude: 5 },
+  });
+  const junkView = await host.json('GET', `/api/events/${junk.id}/host`);
+  check('coordinates that are not coordinates are dropped, not stored', (junkView.event || junkView).place_label, null);
+  check('the create form offers the picker', (await host.text('/events/new')).includes('data-place-input'), true);
+
   section('The host workspace can see what is set');
   await host.json('PUT', `/api/events/${evId}/place`, {
     label: 'London, England, United Kingdom', latitude: 51.5072, longitude: -0.1276, timezone: 'Europe/London',

@@ -44,6 +44,18 @@
           <input type="text" id="location" maxlength="300" placeholder="Venue name or address" />
           <div class="hint">Shown on the invitation and the calendar entry guests save.</div>
 
+          <label for="place-input">Town or city <span class="optional">optional</span></label>
+          <div class="place-picker" id="create-place">
+            <input id="place-input" type="search" autocomplete="off" data-place-input placeholder="Start typing a town…" />
+            <ul class="place-results" data-place-results hidden></ul>
+            <div class="place-suggest" data-place-suggestion hidden></div>
+            <div class="place-current" data-place-current hidden>
+              <span data-place-label></span>
+              <button type="button" class="btn btn-ghost btn-small" data-place-clear>Remove</button>
+            </div>
+          </div>
+          <div class="hint">Lets the event page show the weather for that day. Only as precise as a town — the address above is what guests actually read.</div>
+
           <label for="description">A note for guests <span class="optional">optional</span></label>
           <textarea id="description" maxlength="1000" placeholder="Come celebrate with cake, music and good company."></textarea>
 
@@ -60,6 +72,7 @@
     <!--FOOTER-->
   </div>
 
+  <script src="/place-picker.js"></script>
   <script src="/create.js"></script>
 </body>
 </html>

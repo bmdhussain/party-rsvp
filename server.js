@@ -514,7 +514,7 @@ app.get('/api/events', requireAuth, async (req, res) => {
 // New events start as drafts: the invitation isn't reachable by guests until
 // the host publishes it.
 app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
-  const { name, date, location, description, category } = req.body || {};
+  const { name, date, location, description, category, place } = req.body || {};
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'Event name is required.' });
   }
@@ -523,9 +523,17 @@ app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
   const slug = crypto.randomBytes(6).toString('base64url');
   const eventDate = date ? new Date(date) : null;
 
+  // A town is optional, and only stored when it came with usable coordinates.
+  const lat = place && Number(place.latitude);
+  const lon = place && Number(place.longitude);
+  const hasPlace =
+    place && place.label && Number.isFinite(lat) && lat >= -90 && lat <= 90 &&
+    Number.isFinite(lon) && lon >= -180 && lon <= 180;
+
   await pool.query(
-    `INSERT INTO events (id, slug, owner_id, name, event_date, location, description, category)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    `INSERT INTO events (id, slug, owner_id, name, event_date, location, description, category,
+                         place_label, latitude, longitude, place_timezone)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
     [
       id,
       slug,
@@ -535,6 +543,10 @@ app.post('/api/events', requireAuth, verifySameOrigin, async (req, res) => {
       (location || '').trim().slice(0, 300),
       (description || '').trim().slice(0, 1000),
       normalizeCategory(category),
+      hasPlace ? String(place.label).slice(0, 160) : null,
+      hasPlace ? lat : null,
+      hasPlace ? lon : null,
+      hasPlace && place.timezone ? String(place.timezone).slice(0, 64) : null,
     ]
   );
 
@@ -1665,6 +1677,13 @@ registerFormRoutes(app, { pool, requireAuth, verifySameOrigin, baseUrl });
 // convenience for hosts, not a search endpoint for the public.
 app.get('/api/places', requireAuth, async (req, res) => {
   res.json(await weather.searchPlaces(req.query.q));
+});
+
+// A first guess from the browser's own time zone. The time zone arrives from
+// the client because that is where it lives; nothing about the request's
+// network address is used or looked up.
+app.get('/api/places/suggest', requireAuth, async (req, res) => {
+  res.json(await weather.suggestPlace(req.query.tz));
 });
 
 app.put('/api/events/:eventId/place', requireAuth, verifySameOrigin, async (req, res) => {

@@ -232,14 +232,15 @@
 
         <section class="studio-card" id="place-card">
           <div class="studio-card-heading"><div><span class="section-kicker">Weather</span><h2>Show the forecast on your event page</h2><p>Pick the town your event is in and guests see the weather for that day. Near the date it's a real forecast; further out it says what that week is usually like. This is separate from the address you wrote for guests — it's only ever as precise as a town.</p></div></div>
-          <div class="place-picker">
-            <label for="place-search">Town or city</label>
-            <input id="place-search" type="search" placeholder="Start typing a town…" autocomplete="off" />
-            <ul class="place-results" id="place-results" hidden></ul>
-          </div>
-          <div class="place-current" id="place-current" hidden>
-            <span id="place-current-label"></span>
-            <button type="button" class="btn btn-ghost btn-small" id="place-clear">Remove</button>
+          <div class="place-picker" id="place-search">
+            <label for="place-input">Town or city</label>
+            <input id="place-input" type="search" placeholder="Start typing a town…" autocomplete="off" data-place-input />
+            <ul class="place-results" data-place-results hidden></ul>
+            <div class="place-suggest" data-place-suggestion hidden></div>
+            <div class="place-current" data-place-current hidden>
+              <span data-place-label></span>
+              <button type="button" class="btn btn-ghost btn-small" data-place-clear>Remove</button>
+            </div>
           </div>
           <div class="error-msg" id="place-error"></div>
         </section>
@@ -257,6 +258,7 @@
     <!--FOOTER-->
   </div>
 
+  <script src="/place-picker.js"></script>
   <script src="/host-event.js"></script>
 </body>
 </html>

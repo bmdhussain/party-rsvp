@@ -71,7 +71,7 @@ async function waitForServer(child) {
             temperature_2m_min: [14], precipitation_sum: [0],
           },
         },
-        geocode: { results: [{ name: 'London', admin1: 'England', country: 'United Kingdom', latitude: 51.5072, longitude: -0.1276, timezone: 'Europe/London' }] },
+        geocode: { results: [{ name: 'London', admin1: 'England', country: 'United Kingdom', latitude: 51.5072, longitude: -0.1276, timezone: 'Europe/London', population: 8961989 }] },
       }) },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
